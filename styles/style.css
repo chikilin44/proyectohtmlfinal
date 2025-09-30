@@ -1,0 +1,166 @@
+/* General */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    background-color: #f5f5f5; /* Fondo neutro */
+    color: #222;
+}
+
+/* Header */
+header {
+    background: #fff; /* Blanco neutro */
+    color: #222;
+    padding: 1.5rem 0;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+/* Hero background */
+.hero-bg {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.hero-text {
+    position: absolute;
+    top: 50%;
+    left: 25%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    width: 100%;
+    padding: 0 1rem;
+    z-index: 2;
+}
+.hero-text h1, .hero-text p {
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+/* Categorías */
+section .row img {
+    border: none; /* Sin borde ni círculo */
+    padding: 0;
+    border-radius: 8px; /* Esquinas levemente redondeadas */
+    transition: transform 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+section .row img:hover {
+    transform: scale(1.05);
+}
+
+/* Tarjetas */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+/* Tarjetas y formularios con contorno más visible */
+.card, .modal-content {
+    border: 1.5px solid #bdbdbd;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    background: #fff;
+}
+
+.modal-content {
+    padding: 1rem;
+}
+
+/* Promociones */
+.card.bg-warning {
+    background-color: #d84d2d !important; 
+    color: #222 !important;
+}
+
+.card.bg-danger {
+    background-color: #ff8a80 !important; 
+    color: #222 !important;
+}
+
+.card.bg-primary {
+    background-color: #851b13 !important; 
+    color: #222 !important;
+}
+
+/* Formulario */
+form label {
+    display: block;
+    margin: 0.5rem 0 0.2rem;
+    font-weight: 500;
+}
+
+form input, form textarea, form select, form button {
+    width: 100%;
+    padding: 0.8rem;
+    margin-bottom: 1.2rem;
+    border: 1px solid #bdbdbd;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+form input:focus, form textarea:focus, form select:focus {
+    border-color: #64b5f6;
+    outline: none;
+    box-shadow: 0 0 5px rgba(100,181,246,0.3);
+}
+
+form button {
+    background: #64b5f6;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    font-size: 1.1rem;
+    font-weight: 500;
+    transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+form button:hover {
+    background-color: #1976d2;
+    transform: scale(1.04);
+}
+
+/* Footer */
+footer {
+    background: #ececec;
+    color: #851b13;
+    text-align: center;
+    padding: 1.5rem 0;
+    position: relative;
+    bottom: 0;
+    width: 100%;
+    box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+}
+
+footer p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Images */
+.img-fluid {
+    max-width: 100%;
+    height: auto;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border: none !important;
+}

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Pedidos de Comida</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles/style.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="bg-white shadow-sm py-3">
+        <div class="container d-flex justify-content-between align-items-center">
+            <!-- Logo -->
+            <div class="d-flex align-items-center">
+                <img src="images/Logo_yemm.webp" alt="PEDIDOS YEMM" class="me-3" style="height: 80px;">
+                <span class="fw-bold text-danger">PEDIDOS YEMM</span>
+            </div>
+
+            <!-- Search Bar -->
+            <div class="d-flex align-items-center">
+                
+                <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#direccionModal">Ingresar dirección</button>
+                <div class="input-group ms-3">
+                    <input type="text" class="form-control rounded-pill" placeholder="Buscar locales">
+                    <button class="btn btn-danger rounded-pill ms-2">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Profile -->
+            <div class="d-flex align-items-center">
+                <a href="#" class="text-dark me-3"><i class="bi bi-person"></i> Mi Perfil</a>
+                <a href="#" class="text-dark"><i class="bi bi-chevron-down"></i></a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Modal para ingresar dirección -->
+    <div class="modal fade" id="direccionModal" tabindex="-1" aria-labelledby="direccionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="direccionModalLabel">Ingresar Dirección</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="calle" class="form-label">Calle y número</label>
+                            <input type="text" class="form-control" id="calle" placeholder="Ejemplo: Av. Siempre Viva 742">
+                        </div>
+                        <div class="mb-3">
+                            <label for="ciudad" class="form-label">Ciudad</label>
+                            <input type="text" class="form-control" id="ciudad" placeholder="Ejemplo: Cali">
+                        </div>
+                        <div class="mb-3">
+                            <label for="provincia" class="form-label">Provincia</label>
+                            <input type="text" class="form-control" id="departamento" placeholder="Ejemplo: Valle del Cauca">
+                        </div>
+                        <div class="mb-3">
+                            <label for="codigoPostal" class="form-label">Código Postal</label>
+                            <input type="text" class="form-control" id="codigoPostal" placeholder="Ejemplo: 1000">
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">Guardar Dirección</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <main class="container my-5">
+        <!-- Imagen de fondo -->
+        <section class="hero-bg mb-5 position-relative">
+            <img src="images/fondo.jpg" alt="Fondo" class="w-100 hero-img">
+            <div class="hero-text">
+                <h1 class="display-5 fw-bold text-white">¡BIENVENIDOS!</h1>
+                <p class="lead text-white">Encuentra tus comidas favoritas <br> y promociones cerca de ti.</p>
+            </div>
+        </section>
+
+        <!-- Categorías -->
+        <section class="mb-5">
+            <h2 class="Titulo Opciones">Hola. ¿Qué vas a pedir hoy?</h2>
+            <div class="row text-center">
+                <div class="col-md-2">
+                    <img src="images/Hamburguesa.jpg" alt="Hamburguesas" class="img-fluid">
+                    <p>Hamburguesas</p>
+                </div>
+                <div class="col-md-2">
+                    <img src="images/Pizza.jpeg" alt="Pizzas" class="img-fluid">
+                    <p>Pizzas</p>
+                </div>
+                <div class="col-md-2">
+                    <img src="images/bebidas.jpeg" alt="Bebidas" class="img-fluid">
+                    <p>Bebidas</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Sugerencias -->
+        <section class="mb-5">
+            <div class="container">
+                <h2 class="fw-bold mb-4">Te sugerimos</h2>
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="images/pizza_company.jpg" alt="The Pizza Company" class="img-fluid mb-2" style="max-height:200px;">
+                                <p class="fw-bold mb-0">
+                                    The Pizza Company <br>📍Caravans - Cra 44 # 37 - 10 / Tuluá Valle <br>
+                                    <img src="images/IG.png" alt="Instagram Pizza Company" class="rounded-circle me-1" style="width:28px; height:28px;">
+                                    @thepizzacompanyco
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="images/Pizza_Drive.jpg" alt="Lo De Jesús Parrilla" class="img-fluid mb-2" style="max-height:200px;">
+                                <p class="fw-bold mb-0">
+                                    Drive Pizza <br>📍Calle 26 # 35 - 41 B/ Alvernia <br>
+                                    <img src="images/IG.png" alt="Instagram Drive Pizza" class="rounded-circle me-1" style="width:28px; height:28px;">
+                                    @drivepizzatulua_
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="images/Pizza_Garden.jpg" alt="Paluchino Café" class="img-fluid mb-2" style="max-height:200px;">
+                                <p class="fw-bold mb-0">
+                                    Oliva Pizza Garden <br>📍Cra 40 # 35 - Esquina B/ Lomitas <br>
+                                    <img src="images/IG.png" alt="Instagram Oliva Pizza Garden" class="rounded-circle me-1" style="width:28px; height:28px;">
+                                    @olivapizzagarden
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="images/Ham_Ata.jpg" alt="Paluchino Café" class="img-fluid mb-2" style="max-height:200px;">
+                                <p class="fw-bold mb-0">
+                                    ATA <br>📍Cra 26 # 37 - 51 B/ Salesianos <br>
+                                    <img src="images/IG.png" alt="Instagram ATA" class="rounded-circle me-1" style="width:28px; height:28px;">
+                                    @ataburgerexpress
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="images/Ham_Burger.jpg" alt="Paluchino Café" class="img-fluid mb-2" style="max-height:200px;">
+                                <p class="fw-bold mb-0">
+                                    Smash Burger <br>📍Containers Park, Tuluá <br>
+                                    <img src="images/IG.png" alt="Instagram Smash Burger" class="rounded-circle me-1" style="width:28px; height:28px;">
+                                    @smashburger.tulua
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card h-100">
+                            <div class="card-body text-center">
+                                <img src="images/Ham_Smash.jpg" alt="Paluchino Café" class="img-fluid mb-2" style="max-height:200px;">
+                                <p class="fw-bold mb-0">
+                                    La Burger <br>📍Cra 26 #39 - 16 B/ El Príncipe Tuluá <br>
+                                    <img src="images/IG.png" alt="Instagram La Burger" class="rounded-circle me-1" style="width:28px; height:28px;">
+                                    @laburger.col
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Puedes agregar más sugerencias aquí copiando y pegando otra columna -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Promociones -->
+        <section>
+            <h2 class="fw-bold">No te pierdas estas promociones</h2>
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <p class="fw-bold">Restaurantes</p>
+                            <p>¡Disfrutá estas promociones!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <p class="fw-bold">Medios de pago</p>
+                            <p>¡Conocé todas las opciones de ahorro!</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <p class="fw-bold">Mercados</p>
+                            <p>¡Conocé las promos y ahorrá!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Dirección -->
+    <div class="modal fade" id="direccionModal" tabindex="-1" aria-labelledby="direccionModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="direccionModalLabel">Ingresar Dirección</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="calle" class="form-label">Calle y número</label>
+                            <input type="text" class="form-control" id="calle" placeholder="Ejemplo: Av. Siempre Viva 742">
+                        </div>
+                        <div class="mb-3">
+                            <label for="ciudad" class="form-label">Ciudad</label>
+                            <input type="text" class="form-control" id="ciudad" placeholder="Ejemplo: Cali">
+                        </div>
+                        <div class="mb-3">
+                            <label for="provincia" class="form-label">Provincia</label>
+                            <input type="text" class="form-control" id="departamento" placeholder="Ejemplo: Valle del Cauca">
+                        </div>
+                        <div class="mb-3">
+                            <label for="codigoPostal" class="form-label">Código Postal</label>
+                            <input type="text" class="form-control" id="codigoPostal" placeholder="Ejemplo: 1000">
+                        </div>
+                        <button type="submit" class="btn btn-danger w-100">Guardar Dirección</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-dark text-white py-4">
+        <div class="container">
+            <div class="row text-start">
+                <div class="col-md-3 mb-3">
+                    <h5 class="fw-bold">Enlaces rápidos</h5>
+                    <ul class="list-unstyled">
+                        <li>Explorar productos</li>
+                        <li>Tiendas cercanas</li>
+                        <li>Conocer más</li>
+                    </ul>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h5 class="fw-bold">Redes sociales</h5>
+                    <div class="d-flex gap-2">
+                        <img src="images/facebook.png" alt="Facebook" style="width:32px; height:32px;">
+                        <img src="images/tiktok.png" alt="TikTok" style="width:32px; height:32px;">
+                        <img src="images/twitter.png" alt="Twitter" style="width:32px; height:32px;">
+                        <img src="images/instagram.png" alt="Instagram" style="width:32px; height:32px;">
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h5 class="fw-bold">Contacto</h5>
+                    <p class="mb-0">info@redelivery.com</p>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <h5 class="fw-bold">Información legal</h5>
+                    <ul class="list-unstyled">
+                        <li>Términos y condiciones</li>
+                        <li>Política de privacidad</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>
