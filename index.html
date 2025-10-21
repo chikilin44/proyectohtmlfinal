@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="styles/style.css">
 </head>
 
-<body>
+<body class="d-flex flex-column min-vh-100">
    <!-- Header -->
 <header class="bg-light py-4 px-3 border-bottom shadow-sm">
   <div class="container-fluid">
@@ -97,7 +97,7 @@
     </div>
 
     <!-- Main Content -->
-    <main class="container my-5">
+    <main class="container my-5 flex-fill">
         <!-- Imagen de fondo -->
         <section class="hero-bg mb-5 position-relative">
             <img src="images/fondo.jpg" alt="Fondo" class="w-100 hero-img">
@@ -408,45 +408,48 @@
     </div>
 
     <!-- Footer -->
-    <footer class="bg-dark text-white pt-4 pb-0" style="margin-top: 0;">
-        <div class="container">
-            <div class="row text-start">
-                <div class="col-md-3 mb-3">
-                    <h5 class="fw-bold">Enlaces rápidos</h5>
-                    <ul class="list-unstyled">
-                        <li>Explorar productos</li>
-                        <li>Tiendas cercanas</li>
-                        <li>Conocer más</li>
-                    </ul>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <h5 class="fw-bold">Redes sociales</h5>
-                    <div class="d-flex gap-2">
-                        <img src="images/facebook.png" alt="Facebook" style="width:32px; height:32px;">
-                        <img src="images/tiktok.png" alt="TikTok" style="width:32px; height:32px;">
-                        <img src="images/twitter.png" alt="Twitter" style="width:32px; height:32px;">
-                        <img src="images/instagram.png" alt="Instagram" style="width:32px; height:32px;">
-                    </div>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <h5 class="fw-bold">Contacto</h5>
-                    <p class="mb-0">info@redelivery.com</p>
-                </div>
-                <div class="col-md-3 mb-3">
-                    <h5 class="fw-bold">Información legal</h5>
-                    <ul class="list-unstyled">
-                        <li>Términos y condiciones</li>
-                        <li>Política de privacidad</li>
-                    </ul>
-                </div>
-            </div>
+    <footer class="bg-dark text-white pt-4 pb-0 mt-auto">
+    <div class="container">
+      <div class="row text-start">
+        <div class="col-md-3 mb-3">
+          <h5 class="fw-bold">Enlaces rápidos</h5>
+          <ul class="list-unstyled">
+            <li>Explorar productos</li>
+            <li>Tiendas cercanas</li>
+            <li>Conocer más</li>
+          </ul>
         </div>
+        <div class="col-md-3 mb-3">
+          <h5 class="fw-bold">Redes sociales</h5>
+          <div class="d-flex gap-2">
+            <img src="images/facebook.png" alt="Facebook" style="width:32px; height:32px;">
+            <img src="images/tiktok.png" alt="TikTok" style="width:32px; height:32px;">
+            <img src="images/twitter.png" alt="Twitter" style="width:32px; height:32px;">
+            <img src="images/instagram.png" alt="Instagram" style="width:32px; height:32px;">
+          </div>
+        </div>
+        <div class="col-md-3 mb-3">
+          <h5 class="fw-bold">Contacto</h5>
+          <p class="mb-0">
+            <a href="mailto:info@redelivery.com" class="text-white text-decoration-none">info@redelivery.com</a><br>
+            <a href="tel:+573001234567" class="text-white text-decoration-none">📞 +57 300 123 4567</a>
+          </p>
+        </div>
+        <div class="col-md-3 mb-3">
+          <h5 class="fw-bold">Información legal</h5>
+          <ul class="list-unstyled">
+            <li>Términos y condiciones</li>
+            <li>Política de privacidad</li>
+          </ul>
+        </div>
+      </div>
+    </div>
 
-        <!-- Franja inferior -->
-        <div class="footer-bottom mt-4 py-3" style="background-color:#111;">
-            <p class="mb-0 text-center small text-muted">©️ 2025 PedidosYEMM. Todos los derechos reservados.</p>
-        </div>
-    </footer>
+    <!-- Franja inferior: color distinto para que "derechos reservados" se vea -->
+    <div class="footer-bottom mt-4 py-3 text-center" style="background-color:#ffd600; color:#111;">
+      <p class="mb-0 small fw-semibold">©️ 2025 PedidosYEMM. Todos los derechos reservados.</p>
+    </div>
+  </footer>
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
