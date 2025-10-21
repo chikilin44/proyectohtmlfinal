@@ -4,56 +4,111 @@ body {
     margin: 0;
     padding: 0;
     line-height: 1.6;
-    background-color: #f5f5f5; /* Fondo neutro */
+    background-color: #f5f5f5;
+    /* Fondo neutro */
     color: #222;
 }
 
 /* Header */
 header {
-    background: #fff; /* Blanco neutro */
+    background: #fff;
     color: #222;
-    padding: 1.5rem 0;
+    padding: 0;
+    /* Header bajo */
+    min-height: 0;
     text-align: center;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    overflow: visible;
+    /* Permite que el logo sobresalga */
 }
 
-/* Hero background */
+header .container {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+/* Logo */
+.logo-img {
+    height: 85px;
+    /* Reducido de 110px a 85px */
+    width: auto;
+    max-width: 180px;
+    /* Reducido de 220px a 180px */
+    object-fit: contain;
+    margin-top: -20px;
+    /* Ajustado para el nuevo tamaño */
+    margin-bottom: -10px;
+    /* Ajustado para el nuevo tamaño */
+    display: block;
+}
+
+/* Hero background ocupa todo el ancho de la página y es un poco más alta */
 .hero-bg {
     position: relative;
-    width: 100%;
-    height: 250px;
+    width: 100vw;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    height: 320px;
+    /* Aumenta la altura solo un poco (antes 250px) */
     overflow: hidden;
-    margin-bottom: 2rem;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 0 !important;
+    /* Quita el espacio debajo de la imagen principal */
+    border-radius: 0;
+    box-shadow: none;
+    margin-top: 0 !important;
+    background: #fff;
+    z-index: 1;
+    top: -32px;
+    /* Sube el recuadro/fondo 32px hacia arriba */
 }
+
+/* Ajusta la imagen para que ocupe todo el ancho */
 .hero-img {
-    width: 100%;
+    width: 100vw;
     height: 100%;
     object-fit: cover;
     display: block;
+    margin: 0 auto;
 }
+
+/* Centra el texto sobre la imagen */
 .hero-text {
     position: absolute;
     top: 50%;
-    left: 25%;
+    left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
     width: 100%;
     padding: 0 1rem;
     z-index: 2;
 }
-.hero-text h1, .hero-text p {
-    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+
+.hero-text h1,
+.hero-text p {
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Elimina el margen superior del main y la sección de la imagen principal */
+main.container {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+}
+
+.hero-bg {
+    margin-top: 0 !important;
 }
 
 /* Categorías */
 section .row img {
-    border: none; /* Sin borde ni círculo */
+    border: none;
+    /* Sin borde ni círculo */
     padding: 0;
-    border-radius: 8px; /* Esquinas levemente redondeadas */
+    border-radius: 8px;
+    /* Esquinas levemente redondeadas */
     transition: transform 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
 section .row img:hover {
@@ -64,20 +119,21 @@ section .row img:hover {
 .card {
     border: none;
     border-radius: 10px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .card:hover {
     transform: scale(1.03);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 /* Tarjetas y formularios con contorno más visible */
-.card, .modal-content {
+.card,
+.modal-content {
     border: 1.5px solid #bdbdbd;
     border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
     background: #fff;
 }
 
@@ -87,17 +143,17 @@ section .row img:hover {
 
 /* Promociones */
 .card.bg-warning {
-    background-color: #d84d2d !important; 
+    background-color: #d84d2d !important;
     color: #222 !important;
 }
 
 .card.bg-danger {
-    background-color: #ff8a80 !important; 
+    background-color: #ff8a80 !important;
     color: #222 !important;
 }
 
 .card.bg-primary {
-    background-color: #851b13 !important; 
+    background-color: #851b13 !important;
     color: #222 !important;
 }
 
@@ -108,7 +164,10 @@ form label {
     font-weight: 500;
 }
 
-form input, form textarea, form select, form button {
+form input,
+form textarea,
+form select,
+form button {
     width: 100%;
     padding: 0.8rem;
     margin-bottom: 1.2rem;
@@ -118,10 +177,12 @@ form input, form textarea, form select, form button {
     transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-form input:focus, form textarea:focus, form select:focus {
+form input:focus,
+form textarea:focus,
+form select:focus {
     border-color: #64b5f6;
     outline: none;
-    box-shadow: 0 0 5px rgba(100,181,246,0.3);
+    box-shadow: 0 0 5px rgba(100, 181, 246, 0.3);
 }
 
 form button {
@@ -148,7 +209,17 @@ footer {
     position: relative;
     bottom: 0;
     width: 100%;
-    box-shadow: 0 -2px 4px rgba(0,0,0,0.05);
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
+    border-top: 2px solid #fff;
+}
+
+footer .container {
+    font-size: 1rem;
+}
+
+footer p,
+footer ul {
+    margin-bottom: 0.5rem;
 }
 
 footer p {
@@ -161,6 +232,327 @@ footer p {
     max-width: 100%;
     height: auto;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     border: none !important;
+}
+
+/* Botón "Ingresar dirección" más ancho y menos alto */
+.btn-ingresar-direccion {
+    min-width: 200px;
+    white-space: nowrap;
+    padding-top: 0.4rem;
+    padding-bottom: 0.4rem;
+    font-size: 1rem;
+}
+
+/* Botón circular rojo con icono */
+.btn-circular {
+    background-color: #d84d2d;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    font-size: 1.3rem;
+    transition: background 0.2s;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);
+}
+
+.btn-circular:hover {
+    background-color: #b93c1e;
+    color: #fff;
+}
+
+/* Espaciado entre los botones del modal de login/registro */
+#loginForm .d-flex>button {
+    margin-right: 0.5rem;
+}
+
+#loginForm .d-flex>button:last-child {
+    margin-right: 0;
+}
+
+/* Quita los bordes redondeados de todos los elementos principales */
+.logo-img {
+    border-radius: 0 !important;
+}
+
+.hero-bg,
+.hero-img {
+    border-radius: 0 !important;
+}
+
+/* Ajuste para el mensaje de bienvenida alineado a la izquierda, más bajo y más pequeño */
+.hero-text-left {
+    position: absolute;
+    left: 5%;
+    right: auto;
+    top: 48%;
+    /* Antes: 62%. Ahora más arriba */
+    transform: translateY(-50%);
+    text-align: left;
+    width: 95%;
+    max-width: 650px;
+    /* Aumenta el ancho máximo */
+    background: none !important;
+    /* Quita el fondo semitransparente */
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    z-index: 2;
+}
+
+.hero-text-left .btn {
+    position: absolute;
+    left: 0;
+    top: 115%;
+    /* Coloca el botón debajo del bloque de texto */
+    margin-top: 0;
+    padding: 0.4rem 1.2rem;
+    font-size: 1rem;
+    border-radius: 0.5rem;
+}
+
+/* Para evitar que el botón se salga en pantallas pequeñas */
+@media (max-width: 768px) {
+    .hero-text-left {
+        left: 3%;
+        top: 60%;
+        padding: 0;
+        max-width: 98vw;
+    }
+
+    .hero-text-left h1 {
+        font-size: 1.2rem;
+    }
+
+    .hero-text-left p {
+        font-size: 0.95rem;
+    }
+
+    .hero-text-left .btn {
+        top: 125%;
+        font-size: 0.95rem;
+        padding: 0.35rem 1rem;
+    }
+}
+
+/* Franja de promociones animada tipo carrusel - fondo amarillo */
+.promo-marquee {
+    width: 100vw;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    background: #ffd600;
+    /* Cambiado a amarillo */
+    color: #851b13;
+    /* Texto oscuro para mejor contraste */
+    font-weight: bold;
+    font-size: 1.1rem;
+    overflow: hidden;
+    position: relative;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+}
+
+.promo-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: marquee 18s linear infinite;
+}
+
+.promo-marquee-track span {
+    padding: 0 2.5rem;
+    white-space: nowrap;
+}
+
+@keyframes marquee {
+    0% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(-50%);
+    }
+}
+
+/* Sección de categorías ocupa todo el ancho y sin espacio arriba ni separación */
+.seccion-categorias {
+    background: #f5f5f3;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    /* Quita el espacio superior */
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
+    padding-bottom: 2.5rem;
+}
+
+.seccion-categorias img {
+    width: 160px;
+    /* ancho fijo */
+    height: 160px;
+    /* alto fijo */
+    object-fit: cover;
+    /* recorta sin deformar */
+    border-radius: 50%;
+    /* mantiene la forma circular */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    /* sombra uniforme */
+}
+
+
+.seccion-sugerencias {
+  background: linear-gradient(180deg, #b30000 0%, #8c0000 100%); /* degradado rojo */
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  padding: 80px 0;
+  overflow-x: hidden;
+}
+.seccion-sugerencias .titulo-antojo {
+  color: #fff; /* blanco para que contraste con el fondo rojo */
+  margin-top: -20px;  
+}
+.seccion-sugerencias .container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+.seccion-sugerencias .card {
+  border-radius: 20px;
+  overflow: hidden; /* elimina bordes blancos o redondeos parciales */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.seccion-sugerencias .card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.seccion-sugerencias .card img {
+  width: 100%;           /* ocupa todo el ancho de la tarjeta */
+  height: 220px;         /* todas del mismo tamaño */
+  object-fit: cover;     /* recorta sin deformar */
+  display: block;        /* elimina espacios fantasma */
+  margin: 0;             /* elimina márgenes laterales */
+  border-top-left-radius: 10px;   /* redondeado arriba */
+  border-top-right-radius: 10px; 
+}
+
+.seccion-sugerencias p img {
+  vertical-align: middle; /* alinea verticalmente el logo */
+  margin-right: 4px;      /* separa un poquito del texto */
+  position: relative;
+  top: -1px;              /* ajusta sutilmente la altura si el texto se ve más abajo */
+}
+
+.seccion-sugerencias {
+  margin-bottom: 0;
+  padding-bottom: 40px;
+}
+
+/* Franja inferior del footer */
+.footer-bottom {
+  background-color: #111;
+  color: #bbb;
+  font-size: 0.9rem;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Título llamativo para "¿Qué se te antoja hoy?" */
+.titulo-antojo {
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: #c50505;
+    text-align: center;
+    letter-spacing: 1px;
+
+    margin-bottom: 2rem;
+    margin-top: 0.5rem;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+}
+
+/* Fondo cálido animado de ancho completo */
+.seccion-promociones {
+  background: linear-gradient(135deg, #ffea61, #ffb300, #ff8f00, #ffca28);
+  background-size: 300% 300%;
+  animation: brilloFondo 8s ease-in-out infinite;
+  color: #2b2b2b;
+  width: 100vw;
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+  z-index: 1;
+}
+
+/* Animación del fondo */
+@keyframes brilloFondo {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Tarjetas */
+.promo-card img {
+  width: 100%;
+  height: 180px; /* ajusta si quieres más alto */
+  object-fit: cover;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+/* Tarjetas de promociones: tamaño uniforme */
+.promo-card {
+  height: 100%;
+  min-height: 320px; /* asegura que todas tengan la misma altura */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-radius: 16px;
+  background-color: #fff7e6; /* tono suave que combina con amarillo/naranja */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Pequeño efecto hover */
+.promo-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25);
+}
+
+/* Contenedor de las promociones */
+.seccion-promociones .card-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Botones */
+.btn-dark:hover {
+  background-color: #ff4500 !important;
+  color: #fff !important;
+  transform: scale(1.05);
+}
+
+.seccion-promociones h2.titulo-antojo {
+  color: #000 !important;
 }
