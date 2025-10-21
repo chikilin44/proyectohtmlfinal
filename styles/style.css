@@ -207,10 +207,11 @@ footer {
     text-align: center;
     padding: 1.5rem 0;
     position: relative;
-    bottom: 0;
+    bottom: auto;          /* cambiado: evitar forzar al final */
     width: 100%;
+    top : -48px;            /* subir el footer 48px */
     box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.05);
-    border-top: 2px solid #fff;
+    
 }
 
 footer .container {
