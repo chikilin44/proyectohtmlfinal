@@ -69,7 +69,7 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <form>
+                    <form id="direccionForm">
                         <div class="mb-3">
                             <label for="calle" class="form-label">Calle y número</label>
                             <input type="text" class="form-control" id="calle"
@@ -88,7 +88,12 @@
                             <label for="codigoPostal" class="form-label">Código Postal</label>
                             <input type="text" class="form-control" id="codigoPostal" placeholder="Ejemplo: 1000">
                         </div>
-                        <button type="submit" class="btn btn-danger w-100">Guardar Dirección</button>
+
+                        <!-- botones: guardar/actualizar y eliminar (eliminar sólo si ya hay dirección) -->
+                        <div class="d-flex gap-2">
+                          <button type="submit" class="btn btn-danger w-100" id="guardarDireccionBtn">Guardar Dirección</button>
+                          <button type="button" class="btn btn-outline-danger" id="eliminarDireccionBtn" style="display:none;">Eliminar dirección</button>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -657,9 +662,24 @@
   </div>
 </div>
 
+<!-- TOAST: notificación cuando falta dirección -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
+  <div id="toastNoDireccion" class="toast align-items-center text-bg-warning border-0" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="d-flex">
+      <div class="toast-body">
+        Debes ingresar una dirección antes de confirmar el pedido.
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-dark me-2 mt-1" id="abrirDireccionFromToast">Ingresar dirección</button>
+      <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+    </div>
+  </div>
+</div>
+
 <script>
   // CARRITO
   let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+  // mantener referencia global por compatibilidad con partes del código que usan window.carrito
+  window.carrito = carrito;
 
   function actualizarCarrito() {
     const lista = document.getElementById('carritoLista');
@@ -681,6 +701,8 @@
 
     total.textContent = `$${suma.toLocaleString()}`;
     localStorage.setItem('carrito', JSON.stringify(carrito));
+    // sincronizar window.carrito
+    window.carrito = carrito;
   }
 
   function eliminarDelCarrito(index) {
@@ -696,44 +718,6 @@
       actualizarCarrito();
     });
   });
-
-  // Confirmar pedido: preserve current behavior (tries to trigger PayPal button)
-  // Replace event listeners safely
-  const confirmarBtnOld = document.getElementById('confirmarPedidoBtn');
-  if (confirmarBtnOld) {
-    const confirmarClone = confirmarBtnOld.cloneNode(true);
-    confirmarBtnOld.replaceWith(confirmarClone);
-
-    confirmarClone.addEventListener('click', function (e) {
-      e.preventDefault();
-      if (!carrito || carrito.length === 0) {
-        alert('Tu carrito está vacío.');
-        return;
-      }
-
-      // If PayPal SDK not loaded show message
-      if (!window.paypal) {
-        alert('Método de pago no disponible. Recarga la página o intenta más tarde.');
-        return;
-      }
-
-      // If buttons are not ready, call init (init defined later) and wait
-      if (!window.__paypalButtonsReady) {
-        if (typeof initPayPalButtons === 'function') initPayPalButtons();
-      }
-
-      // Try to click internal PayPal button if available
-      setTimeout(() => {
-        const container = document.getElementById('paypal-button-container');
-        const btn = container && container.querySelector('button');
-        if (btn) {
-          try { btn.click(); } catch (err) { console.warn('No se pudo hacer click automático en PayPal button:', err); alert('Presiona el botón de pago que aparece en pantalla.'); }
-        } else {
-          alert('Preparando método de pago. Intenta nuevamente en unos segundos.');
-        }
-      }, 400);
-    });
-  }
 
   // Init carrito view on load
   actualizarCarrito();
@@ -783,11 +767,34 @@
           createOrder: function (data, actions) {
             try {
               const carritoLocal = JSON.parse(localStorage.getItem('carrito') || '[]');
+
               if (!carritoLocal.length) {
                 alert('Tu carrito está vacío.');
                 return Promise.reject(new Error('Carrito vacío'));
               }
+
+              // verificar dirección: preferir localStorage, si no tomar la primera del perfil en users
+              let direccionSeleccionada = localStorage.getItem('direccion') || '';
+              if (!direccionSeleccionada) {
+                const logged = localStorage.getItem('loggedUser');
+                if (logged) {
+                  const users = JSON.parse(localStorage.getItem('users') || '{}');
+                  const user = users[logged];
+                  if (user && Array.isArray(user.addresses) && user.addresses.length > 0) {
+                    direccionSeleccionada = user.addresses[0];
+                    // opcional: establecerla en localStorage para futuros usos
+                    localStorage.setItem('direccion', direccionSeleccionada);
+                  }
+                }
+              }
+
+              if (!direccionSeleccionada || direccionSeleccionada.trim() === "") {
+                alert('Debes ingresar una dirección para confirmar el pedido.');
+                return Promise.reject(new Error('Dirección no registrada'));
+              }
+
               const total = carritoLocal.reduce((s, i) => s + (Number(i.precio) || 0), 0);
+              // PayPal espera valor en moneda configurada; aquí se usa USD (ajusta si necesario)
               const amountValue = total.toFixed(2);
               return actions.order.create({
                 purchase_units: [{
@@ -829,13 +836,19 @@
                 pedidosGlobales.push({ cliente: email, productos: carritoLocal, total, fecha, direccion, estado: 'pagado', metodo: 'paypal', paypalOrderId: data.orderID });
                 localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
 
+                // limpiar carrito correctamente (variable + localStorage + UI)
+                carrito = [];
                 localStorage.setItem('carrito', JSON.stringify([]));
-                window.carrito = [];
                 if (typeof actualizarCarrito === 'function') actualizarCarrito();
 
                 alert('Pago completado. Gracias ' + ((details.payer && details.payer.name && details.payer.name.given_name) ? details.payer.name.given_name : '') + '!');
                 bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).hide();
+                // quitar posibles backdrops y limpiar container PayPal
                 document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                const container = document.getElementById('paypal-button-container');
+                if (container) container.innerHTML = '';
+                window.__paypalButtonsReady = false;
+                window.__paypalButtonElement = null;
                 document.body.classList.remove('modal-open');
               } catch (err) {
                 console.error('Error guardando pedido en onApprove:', err);
@@ -885,23 +898,225 @@
     });
   }
 
-  // Renderizar al abrir el modal (mantener comportamiento)
-  const carritoModalEl = document.getElementById('carritoModal');
-  if (carritoModalEl) {
-    carritoModalEl.addEventListener('shown.bs.modal', function () {
-      // inicializar (espera al SDK si hace falta)
-      initPayPalButtons().catch(() => { /* ya notifica al usuario en init */ });
+  // Manejo cruzado de modales para evitar superposición / PayPal quedando detrás
+  (function setupModalInteraction() {
+    const carritoModalEl = document.getElementById('carritoModal');
+    const direccionModalEl = document.getElementById('direccionModal');
+    const paypalContainer = document.getElementById('paypal-button-container');
+
+    // Cuando se muestra carrito, ocultar dirección y limpiar posibles backdrops
+    if (carritoModalEl) {
+      carritoModalEl.addEventListener('show.bs.modal', function () {
+        if (direccionModalEl) {
+          const instDir = bootstrap.Modal.getOrCreateInstance(direccionModalEl);
+          try { instDir.hide(); } catch (e) { /* ignore */ }
+        }
+        // limpiar backdrops anteriores
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+      });
+
+      carritoModalEl.addEventListener('shown.bs.modal', function () {
+        // inicializar PayPal
+        initPayPalButtons().catch(() => { /* ya notifica al usuario en init */ });
+      });
+
+      carritoModalEl.addEventListener('hidden.bs.modal', function () {
+        // limpiar container PayPal y backdrops al cerrar carrito
+        if (paypalContainer) paypalContainer.innerHTML = '';
+        window.__paypalButtonsReady = false;
+        window.__paypalButtonElement = null;
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+      });
+    }
+
+    // Cuando se muestra direccion, ocultar carrito y limpiar PayPal
+    if (direccionModalEl) {
+      direccionModalEl.addEventListener('show.bs.modal', function () {
+        if (carritoModalEl) {
+          const instCar = bootstrap.Modal.getOrCreateInstance(carritoModalEl);
+          try { instCar.hide(); } catch (e) { /* ignore */ }
+        }
+        if (paypalContainer) paypalContainer.innerHTML = '';
+        window.__paypalButtonsReady = false;
+        window.__paypalButtonElement = null;
+        // limpiar backdrops
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+      });
+
+      direccionModalEl.addEventListener('hidden.bs.modal', function () {
+        // limpieza adicional al cerrar dirección
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+      });
+    }
+
+    // Abrir modal dirección desde toast: asegurarse que carrito esté cerrado
+    const abrirBtn = document.getElementById('abrirDireccionFromToast');
+    if (abrirBtn) {
+      abrirBtn.addEventListener('click', function () {
+        if (carritoModalEl) {
+          const instCar = bootstrap.Modal.getOrCreateInstance(carritoModalEl);
+          try { instCar.hide(); } catch (e) { /* ignore */ }
+        }
+        bootstrap.Modal.getOrCreateInstance(direccionModalEl).show();
+        const t = bootstrap.Toast.getInstance(document.getElementById('toastNoDireccion'));
+        if (t) t.hide();
+      });
+    }
+  })();
+
+  // Handler para guardar/editar/eliminar dirección desde el modal
+  (function handleDireccionForm() {
+    const direccionForm = document.getElementById('direccionForm') || document.querySelector('#direccionModal form');
+    if (!direccionForm) return;
+
+    const direccionModalEl = document.getElementById('direccionModal');
+    const guardarBtn = document.getElementById('guardarDireccionBtn');
+    const eliminarBtn = document.getElementById('eliminarDireccionBtn');
+
+    // Actualiza la lista de direcciones en el modal de perfil si está abierto
+    function refreshProfileAddressesUI() {
+      const logged = localStorage.getItem('loggedUser');
+      if (!logged) return;
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      const user = users[logged];
+      if (!user) return;
+      const ul = document.getElementById('profileAddresses');
+      if (!ul) return;
+      ul.innerHTML = '';
+      const addresses = user.addresses || [];
+      if (addresses.length === 0) {
+        ul.innerHTML = '<li class="list-group-item">No hay direcciones registradas.</li>';
+      } else {
+        addresses.forEach(addr => {
+          const li = document.createElement('li');
+          li.className = 'list-group-item';
+          li.textContent = addr;
+          ul.appendChild(li);
+        });
+      }
+    }
+
+    // Rellenar formulario si ya existe dirección guardada
+    function prefillDireccion() {
+      const obj = JSON.parse(localStorage.getItem('direccionObj') || 'null');
+      const texto = localStorage.getItem('direccion') || '';
+      if (obj) {
+        document.getElementById('calle').value = obj.calle || '';
+        document.getElementById('ciudad').value = obj.ciudad || '';
+        document.getElementById('departamento').value = obj.departamento || '';
+        document.getElementById('codigoPostal').value = obj.codigoPostal || '';
+        if (guardarBtn) guardarBtn.textContent = 'Actualizar Dirección';
+        if (eliminarBtn) eliminarBtn.style.display = 'inline-block';
+      } else if (texto) {
+        // si sólo hay texto, mostrarlo en calle para edición rápida
+        document.getElementById('calle').value = texto;
+        document.getElementById('ciudad').value = '';
+        document.getElementById('departamento').value = '';
+        document.getElementById('codigoPostal').value = '';
+        if (guardarBtn) guardarBtn.textContent = 'Actualizar Dirección';
+        if (eliminarBtn) eliminarBtn.style.display = 'inline-block';
+      } else {
+        // no hay dirección registrada -> limpiar formulario
+        document.getElementById('calle').value = '';
+        document.getElementById('ciudad').value = '';
+        document.getElementById('departamento').value = '';
+        document.getElementById('codigoPostal').value = '';
+        if (guardarBtn) guardarBtn.textContent = 'Guardar Dirección';
+        if (eliminarBtn) eliminarBtn.style.display = 'none';
+      }
+    }
+
+    // Al abrir el modal, rellenar si corresponde
+    if (direccionModalEl) {
+      direccionModalEl.addEventListener('show.bs.modal', function () {
+        prefillDireccion();
+      });
+    }
+
+    direccionForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const calle = document.getElementById('calle').value.trim();
+      const ciudad = document.getElementById('ciudad').value.trim();
+      const departamento = document.getElementById('departamento').value.trim();
+      const codigoPostal = document.getElementById('codigoPostal').value.trim();
+
+      if (!calle || !ciudad) {
+        alert('Por favor completa calle y ciudad.');
+        return;
+      }
+
+      const direccionTexto = `${calle}, ${ciudad}${departamento ? ', ' + departamento : ''}${codigoPostal ? ' - CP ' + codigoPostal : ''}`;
+      const direccionObj = { calle, ciudad, departamento, codigoPostal };
+
+      // Guardar tanto texto como objeto estructurado
+      localStorage.setItem('direccion', direccionTexto);
+      localStorage.setItem('direccionObj', JSON.stringify(direccionObj));
+
+      // si hay usuario logueado, guardarla en su perfil (array addresses) evitando duplicados
+      const logged = localStorage.getItem('loggedUser');
+      if (logged) {
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        if (!users[logged]) users[logged] = {};
+        users[logged].addresses = users[logged].addresses || [];
+        // evitar duplicados exactos
+        if (!users[logged].addresses.includes(direccionTexto)) {
+          users[logged].addresses.push(direccionTexto);
+        }
+        localStorage.setItem('users', JSON.stringify(users));
+      }
+
+      // cerrar modal y limpiar backdrop si quedó
+      bootstrap.Modal.getOrCreateInstance(document.getElementById('direccionModal')).hide();
+      document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+      document.body.classList.remove('modal-open');
+
+      // actualizar UI del perfil si corresponde
+      refreshProfileAddressesUI();
+
+      alert('Dirección guardada.');
     });
 
-    carritoModalEl.addEventListener('hidden.bs.modal', function () {
-      const container = document.getElementById('paypal-button-container');
-      if (container) container.innerHTML = '';
-      window.__paypalButtonsReady = false;
-      window.__paypalButtonElement = null;
-    });
-  }
+    // Eliminar dirección registrada
+    if (eliminarBtn) {
+      eliminarBtn.addEventListener('click', function () {
+        const confirmDel = confirm('¿Deseas eliminar la dirección registrada?');
+        if (!confirmDel) return;
 
-  // ConfirmarPedido: abrir modal + tratar de auto-click (mejorado y con espera)
+        const direccionTexto = localStorage.getItem('direccion') || '';
+        localStorage.removeItem('direccion');
+        localStorage.removeItem('direccionObj');
+
+        // si hay usuario logueado, eliminar la dirección del perfil (si coincide)
+        const logged = localStorage.getItem('loggedUser');
+        if (logged) {
+          const users = JSON.parse(localStorage.getItem('users') || '{}');
+          if (users[logged] && Array.isArray(users[logged].addresses)) {
+            users[logged].addresses = users[logged].addresses.filter(a => a !== direccionTexto);
+            localStorage.setItem('users', JSON.stringify(users));
+          }
+        }
+
+        // limpiar formulario y ocultar botón eliminar
+        document.getElementById('calle').value = '';
+        document.getElementById('ciudad').value = '';
+        document.getElementById('departamento').value = '';
+        document.getElementById('codigoPostal').value = '';
+        if (guardarBtn) guardarBtn.textContent = 'Guardar Dirección';
+        eliminarBtn.style.display = 'none';
+
+        // actualizar UI del perfil si corresponde
+        refreshProfileAddressesUI();
+
+        alert('Dirección eliminada.');
+      });
+    }
+  })();
+
+  // ConfirmarPedido: abrir modal + tratar de auto-click (mejorado y con espera) + validación de dirección
   (function attachConfirm() {
     const confirmarEl = document.getElementById('confirmarPedidoBtn');
     if (!confirmarEl) return;
@@ -911,12 +1126,37 @@
 
     nuevo.addEventListener('click', async function (e) {
       e.preventDefault();
-      if (!Array.isArray(window.carrito) || window.carrito.length === 0) {
+      if (!Array.isArray(carrito) || carrito.length === 0) {
         alert('Tu carrito está vacío.');
         return;
       }
 
-      // abrir modal
+      // VALIDACIÓN: verificar si existe dirección (localStorage o en perfil del usuario)
+      const direccionLocal = localStorage.getItem('direccion');
+      let tieneDireccion = Boolean(direccionLocal && direccionLocal.trim());
+
+      if (!tieneDireccion) {
+        const logged = localStorage.getItem('loggedUser');
+        if (logged) {
+          const users = JSON.parse(localStorage.getItem('users') || '{}');
+          const user = users[logged];
+          if (user && Array.isArray(user.addresses) && user.addresses.length > 0) {
+            tieneDireccion = true;
+            // opcional: establecer la primera como dirección activa
+            localStorage.setItem('direccion', user.addresses[0]);
+          }
+        }
+      }
+
+      if (!tieneDireccion) {
+        // mostrar toast de aviso y no continuar con el flujo de pago
+        const toastEl = document.getElementById('toastNoDireccion');
+        const toast = new bootstrap.Toast(toastEl, { delay: 6000 });
+        toast.show();
+        return;
+      }
+
+      // abrir modal carrito (se encargará de inicializar PayPal y ocultar dirección)
       bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).show();
 
       // asegurarse de que PayPal Buttons se inicialicen
