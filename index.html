@@ -8,6 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="styles/style.css">
+
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -793,7 +794,7 @@
 
   </script>
 
- <!-- Modal Carrito -->
+  <!-- Modal Carrito -->
   <div class="modal fade" id="carritoModal" tabindex="-1" aria-labelledby="carritoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -1033,12 +1034,8 @@
             console.info('PayPal Buttons renderizados y listos.');
           });
         })
-        .catch(err => {
-          console.error('initPayPalButtons fallo:', err);
-          alert('Método de pago temporalmente no disponible. Revisa la consola (F12).');
-          throw err;
-        });
     }
+
 
     // Poll para buscar el botón interno de PayPal (intento de auto-click)
     function clickPaypalInternalButton(timeoutMs = 5000, intervalMs = 300) {
@@ -1083,7 +1080,7 @@
           initPayPalButtons().catch(() => { /* ya notifica al usuario en init */ });
         });
 
-        carritoModalEl.addEventListener('hidden.bs.modal', function () {
+        carritoModalEl.addEventListener('hisdden.bs.modal', function () {
           // limpiar container PayPal y backdrops al cerrar carrito
           if (paypalContainer) paypalContainer.innerHTML = '';
           window.__paypalButtonsReady = false;
@@ -1371,7 +1368,7 @@
 
         // crear pedido local
         const total = carrito.reduce((s, i) => s + (Number(i.precio) || 0), 0);
-        const tiendaSeleccionada = carrito[0]?.tienda || "sin_tienda";
+const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
 
         const pedido = {
           id: 'local_' + Date.now(),
@@ -1383,7 +1380,7 @@
           metodo: 'efectivo',
           cliente: localStorage.getItem('loggedUser') || 'invitado',
           repartidorId: null,
-          tienda: tiendaSeleccionada   // reportes
+          tienda: tiendaSeleccionada
         };
 
 
@@ -1647,14 +1644,12 @@
           list.appendChild(el);
         });
       };
-document.getElementById('repartidorModal')?.addEventListener('show.bs.modal', function () { renderPedidosRepartidor(); });
+      document.getElementById('repartidorModal')?.addEventListener('show.bs.modal', function () { renderPedidosRepartidor(); });
       console.info('Módulo repartidor inicializado.');
     })();
-</script>
+  </script>
 
 
-      
-  
 
   <script>
 
@@ -1821,4 +1816,5 @@ document.getElementById('repartidorModal')?.addEventListener('show.bs.modal', fu
 
   </script>
 </body>
-</html> 
+
+</html>
