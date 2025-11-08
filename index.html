@@ -48,6 +48,7 @@
 
       </div>
     </div>
+
     <!-- Botón Panel Repartidor -->
     <button class="btn btn-outline-danger ms-3" data-bs-toggle="modal" data-bs-target="#repartidorModal"
       id="btnRepartidor" style="display:none;">
@@ -61,6 +62,7 @@
 
 
   </header>
+
 
 
   <div class="promo-marquee">
@@ -213,8 +215,14 @@
           <h6>Clientes frecuentes por tienda</h6>
           <div id="tablaClientes"></div>
         </div>
+        <hr>
+        <h6>Cobertura geográfica</h6>
+        <div id="tablaCobertura"></div>
+
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+
+
         </div>
       </div>
     </div>
@@ -708,6 +716,12 @@
       bootstrap.Modal.getOrCreateInstance(document.getElementById('profileModal')).show();
     }
 
+    document.getElementById("profileBtn").addEventListener("click", function () {
+      if (currentUser) {
+        showProfileModal(currentUser);
+      }
+    });
+
     // Guardar foto de perfil
     const photoInputEl = document.getElementById('photoInput');
     if (photoInputEl) {
@@ -779,7 +793,7 @@
 
   </script>
 
-  <!-- Modal Carrito -->
+ <!-- Modal Carrito -->
   <div class="modal fade" id="carritoModal" tabindex="-1" aria-labelledby="carritoModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-content">
@@ -802,6 +816,9 @@
       </div>
     </div>
   </div>
+
+
+
 
   <!-- TOAST: notificación cuando falta dirección -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
@@ -1366,7 +1383,7 @@
           metodo: 'efectivo',
           cliente: localStorage.getItem('loggedUser') || 'invitado',
           repartidorId: null,
-          tienda: tiendaSeleccionada   // 👈 campo obligatorio para reportes
+          tienda: tiendaSeleccionada   // reportes
         };
 
 
@@ -1535,6 +1552,7 @@
       }
     });
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     (function () {
       const STORE_REP = 'repartidores';
@@ -1629,25 +1647,19 @@
           list.appendChild(el);
         });
       };
+document.getElementById('repartidorModal')?.addEventListener('show.bs.modal', function () { renderPedidosRepartidor(); });
+      console.info('Módulo repartidor inicializado.');
+    })();
 </script>
 
 
+      
+  
+
   <script>
-    let currentUser = null;
 
-    function showProfileModal(user) {
-      const modalBody = document.getElementById('profileModal').querySelector('.modal-body');
-      const existingPedidos = modalBody.querySelector('.profile-pedidos-container');
-      if (existingPedidos) existingPedidos.remove();
 
-      document.getElementById('profileName').textContent = user.name || '';
-      document.getElementById('profileEmail').textContent = user.email || '';
-
-      const photo = user.photo || 'https://via.placeholder.com/90x90?text=Foto';
-      document.getElementById('profilePhoto').src = photo;
-    }
-
-    // Función para calcular ingresos mensuales por tienda
+    // Funciones de reportes
     function calcularIngresosMensuales() {
       const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
       const ingresos = {};
@@ -1656,11 +1668,11 @@
         const tienda = p.tienda || "sin_tienda";
         const fecha = new Date(p.fecha);
         const mes = fecha.getMonth() + 1;
-        const año = fecha.getFullYear();
-        const clave = `${tienda}-${año}-${mes}`;
+        const anio = fecha.getFullYear();
+        const clave = `${tienda}-${anio}-${mes}`;
 
         if (!ingresos[clave]) {
-          ingresos[clave] = { tienda, año, mes, total: 0 };
+          ingresos[clave] = { tienda, anio, mes, total: 0 };
         }
         ingresos[clave].total += p.total;
       });
@@ -1700,9 +1712,9 @@
 
           // Tabla de ingresos
           let htmlIngresos = `<table class="table table-striped">
-            <thead><tr><th>Tienda</th><th>Año</th><th>Mes</th><th>Total</th></tr></thead><tbody>`;
+          <thead><tr><th>Tienda</th><th>Año</th><th>Mes</th><th>Total</th></tr></thead><tbody>`;
           ingresos.forEach(i => {
-            htmlIngresos += `<tr><td>${i.tienda}</td><td>${i.año}</td><td>${i.mes}</td><td>$${i.total.toLocaleString()}</td></tr>`;
+            htmlIngresos += `<tr><td>${i.tienda}</td><td>${i.anio}</td><td>${i.mes}</td><td>$${i.total.toLocaleString()}</td></tr>`;
           });
           htmlIngresos += `</tbody></table>`;
           document.getElementById('tablaIngresos').innerHTML = htmlIngresos;
@@ -1720,6 +1732,93 @@
         });
       }
     });
+    function coberturaGeograficaDesdeDOM() {
+      const cards = document.querySelectorAll("#te-sugerimos .card");
+      const cobertura = {};
+
+      cards.forEach(card => {
+        // Nombre de la tienda (primer <p> en la tarjeta)
+        const nombre = card.querySelector("p").textContent.trim();
+
+        // Extraer dirección del enlace (ejemplo: "Cra 44 # 37 - 10 / Tuluá Valle")
+        const direccion = card.querySelector("a").textContent.trim();
+
+        // Aquí asumimos que el último término es el municipio y el penúltimo es el departamento
+        // Puedes ajustar según tu formato
+        const partes = direccion.split(" ");
+        const municipio = partes[partes.length - 2] || "Municipio desconocido";
+        const departamento = partes[partes.length - 1] || "Departamento desconocido";
+
+        if (!cobertura[departamento]) cobertura[departamento] = [];
+        cobertura[departamento].push({ nombre, municipio });
+      });
+
+      return cobertura;
+      function guardarPedido(tienda, cliente, total) {
+        // Recuperar pedidos existentes
+        let pedidos = JSON.parse(localStorage.getItem("pedidosGlobales") || "[]");
+
+        // Crear nuevo pedido
+        const nuevoPedido = {
+          tienda,
+          cliente,
+          fecha: new Date().toISOString(),
+          total
+        };
+
+        // Agregar al array
+        pedidos.push(nuevoPedido);
+
+        // Guardar en localStorage
+        localStorage.setItem("pedidosGlobales", JSON.stringify(pedidos));
+      }
+
+    }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const reportesModal = document.getElementById("reportesModal");
+      if (reportesModal) {
+        reportesModal.addEventListener("shown.bs.modal", function () {
+          const cobertura = coberturaGeograficaDesdeDOM();
+
+          let htmlCobertura = "";
+          for (const depto in cobertura) {
+            htmlCobertura += `<h6>${depto}</h6><ul>`;
+            cobertura[depto].forEach(t => {
+              htmlCobertura += `<li>${t.nombre} — ${t.municipio}</li>`;
+            });
+            htmlCobertura += `</ul>`;
+          }
+
+          document.getElementById("tablaCobertura").innerHTML = htmlCobertura;
+        });
+      }
+      document.addEventListener("DOMContentLoaded", function () {
+        const finalizarBtn = document.getElementById("finalizarCompraBtn");
+
+        if (finalizarBtn) {
+          finalizarBtn.addEventListener("click", function () {
+            // Aquí obtienes los datos reales del carrito
+            const tiendaSeleccionada = "Pizza Garden"; // puedes cambiar según el contexto
+            const cliente = localStorage.getItem("loggedUser"); // correo del usuario logueado
+            const totalCarrito = parseInt(document.getElementById("carritoTotal").textContent) || 0;
+
+            if (!cliente) {
+              alert("Debes iniciar sesión para finalizar la compra.");
+              return;
+            }
+
+            guardarPedido(tiendaSeleccionada, cliente, totalCarrito);
+
+            alert("¡Compra registrada correctamente!");
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("carritoModal")).hide();
+          });
+        }
+      });
+
+    });
+
   </script>
 </body>
-</html>
+</html> 
