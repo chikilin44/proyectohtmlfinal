@@ -219,6 +219,12 @@
         <hr>
         <h6>Cobertura geográfica</h6>
         <div id="tablaCobertura"></div>
+        <hr>
+<h6>Reportes de Repartidores</h6>
+<div id="tablaRepartidores"></div>
+<div id="tablaHistorialRepartidor"></div>
+<div id="tablaTiempoEntrega"></div>
+
 
         <div class="modal-footer">
           <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
@@ -791,6 +797,66 @@
         document.body.classList.remove('modal-open');
       });
     }
+// ==========================
+// Panel Repartidor
+// ==========================
+function mostrarPedidosRepartidor() {
+  const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const lista = document.getElementById('repartidorPedidosList');
+  lista.innerHTML = '';
+
+  pedidosGlobales.forEach(p => {
+    // mostramos todos los pedidos que no estén entregados
+    if (p.estado !== "entregado") {
+      const item = document.createElement('div');
+      item.className = "list-group-item d-flex justify-content-between align-items-center";
+      item.innerHTML = `
+        <div>
+          <strong>Pedido ${p.id}</strong><br>
+          Cliente: ${p.cliente}<br>
+          Estado: ${p.estado}
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-success" onclick="aceptarPedido('${p.id}', '${currentUser?.repartidorId || ''}')">Aceptar</button>
+          <button class="btn btn-sm btn-primary" onclick="entregarPedido('${p.id}')">Entregar</button>
+        </div>
+      `;
+      lista.appendChild(item);
+    }
+  });
+}
+
+// Refrescar pedidos al abrir el modal del repartidor
+document.getElementById('repartidorModal')
+  ?.addEventListener('shown.bs.modal', function () {
+    mostrarPedidosRepartidor();
+  });
+
+// Funciones de aceptar y entregar
+function aceptarPedido(pedidoId, repartidorId) {
+  const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const pedido = pedidosGlobales.find(p => p.id === pedidoId);
+  if (pedido) {
+    pedido.repartidorId = repartidorId;
+    pedido.estado = "aceptado";
+    localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
+    mostrarPedidosRepartidor();
+    mostrarReporteRepartidores(); // refresca reportes
+  }
+}
+
+function entregarPedido(pedidoId) {
+  const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const pedido = pedidosGlobales.find(p => p.id === pedidoId);
+  if (pedido) {
+    pedido.estado = "entregado";
+    pedido.fechaEntrega = new Date().toISOString();
+    localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
+    mostrarPedidosRepartidor();
+    mostrarReporteRepartidores(); // refresca reportes
+  }
+}
+
 
   </script>
 
@@ -876,7 +942,7 @@
       btn.addEventListener('click', function () {
         const nombre = this.dataset.nombre;
         const precio = parseInt(this.dataset.precio) || 0;
-        carrito.push({ nombre, precio });
+        carrito.push({ nombre, precio, tiendaSeleccionada });
         actualizarCarrito();
       });
     });
@@ -1275,7 +1341,6 @@
       }
     })();
 
-    // ...existing code...
     (function attachConfirm() {
       const confirmarEl = document.getElementById('confirmarPedidoBtn');
       if (!confirmarEl) return;
@@ -1368,20 +1433,20 @@
 
         // crear pedido local
         const total = carrito.reduce((s, i) => s + (Number(i.precio) || 0), 0);
-const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
+        const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
 
-        const pedido = {
-          id: 'local_' + Date.now(),
-          productos: carrito,
-          total,
-          fecha: new Date().toLocaleString(),
-          direccion,
-          estado: 'pendiente',
-          metodo: 'efectivo',
-          cliente: localStorage.getItem('loggedUser') || 'invitado',
-          repartidorId: null,
-          tienda: tiendaSeleccionada
-        };
+       const pedido = {
+  id: 'local_' + Date.now(),
+  productos: carrito,
+  total,
+  fecha: new Date().toISOString(),   // ✅ formato seguro
+  direccion,
+  estado: 'pendiente',
+  metodo: 'efectivo',
+  cliente: localStorage.getItem('loggedUser') || 'invitado',
+  repartidorId: null,
+  tienda: carrito.find(p => p.tienda)?.tienda || "sin_tienda"
+};
 
 
         // guardar pedidos por usuario
@@ -1505,7 +1570,13 @@ const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
             <p class="card-text text-muted small">${p.descripcion}</p>
             <div class="mt-auto d-flex justify-content-between align-items-center">
               <strong>$${p.precio.toLocaleString()}</strong>
-              <button class="btn btn-outline-danger btn-sm agregar-carrito-por-id" data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio}">Agregar</button>
+<button class="btn btn-outline-danger btn-sm agregar-carrito-por-id"
+        data-id="${p.id}"
+        data-nombre="${p.nombre}"
+        data-precio="${p.precio}"
+        data-tienda="${p.tienda}">
+  Agregar
+</button>
             </div>
           </div>
         </div>
@@ -1521,14 +1592,19 @@ const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
           btn.addEventListener('click', function () {
             const nombre = this.dataset.nombre;
             const precio = parseInt(this.dataset.precio) || 0;
-            carrito.push({ nombre, precio });
+            const tienda = this.dataset.tienda || "sin_tienda";
+            carrito.push({ nombre, precio, tienda });
+
+            carrito.push({ nombre, precio, tienda });
             localStorage.setItem('carrito', JSON.stringify(carrito));
             if (typeof actualizarCarrito === 'function') actualizarCarrito();
+
             const original = this.innerHTML;
             this.innerHTML = 'Agregado';
             setTimeout(() => this.innerHTML = original, 900);
           });
         });
+
       }
 
       // click en tarjetas de categoría
@@ -1769,6 +1845,66 @@ const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
       }
 
     }
+// Cantidad de pedidos entregados por repartidor
+function calcularPedidosPorRepartidor() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const resumen = {};
+
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado") {
+      if (!resumen[p.repartidorId]) {
+        resumen[p.repartidorId] = { repartidorId: p.repartidorId, total: 0 };
+      }
+      resumen[p.repartidorId].total += 1;
+    }
+  });
+
+  return Object.values(resumen);
+}
+
+// Historial de pedidos por repartidor
+function historialPedidosRepartidor(repartidorId) {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  return pedidos.filter(p => p.repartidorId === repartidorId);
+}
+
+// Tiempo promedio de entrega por repartidor (agrupado por mes)
+function calcularTiempoPromedioEntrega() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const tiempos = {};
+
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado" && p.fechaEntrega) {
+      const inicio = new Date(p.fecha);
+      const fin = new Date(p.fechaEntrega);
+      const minutos = Math.round((fin - inicio) / 60000);
+
+      const fecha = new Date(p.fecha);
+      const mes = fecha.getMonth() + 1;
+      const anio = fecha.getFullYear();
+      const clave = `${p.repartidorId}-${anio}-${mes}`;
+
+      if (!tiempos[clave]) {
+        tiempos[clave] = { repartidorId: p.repartidorId, anio, mes, suma: 0, cantidad: 0 };
+      }
+      tiempos[clave].suma += minutos;
+      tiempos[clave].cantidad += 1;
+    }
+  });
+
+  return Object.values(tiempos).map(t => ({
+    repartidorId: t.repartidorId,
+    anio: t.anio,
+    mes: t.mes,
+    promedio: (t.suma / t.cantidad).toFixed(1)
+  }));
+  document.getElementById('reportesModal').addEventListener('shown.bs.modal', function () {
+  mostrarReporteRepartidores();
+});
+
+}
+
+
 
 
     document.addEventListener("DOMContentLoaded", function () {
@@ -1789,6 +1925,7 @@ const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
           document.getElementById("tablaCobertura").innerHTML = htmlCobertura;
         });
       }
+    
       document.addEventListener("DOMContentLoaded", function () {
         const finalizarBtn = document.getElementById("finalizarCompraBtn");
 
@@ -1810,6 +1947,7 @@ const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
             bootstrap.Modal.getOrCreateInstance(document.getElementById("carritoModal")).hide();
           });
         }
+       
       });
 
     });
