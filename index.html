@@ -8,6 +8,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
   <link rel="stylesheet" href="styles/style.css">
+
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -39,16 +40,28 @@
           </div>
         </div>
 
-        <!-- Perfil -->
-        <div class="d-flex align-items-center ms-3">
+        <div class="d-flex align-items-center ms-3 gap-2">
+          <!-- Reportes -->
+          <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reportesModal"
+            id="btnReportes" style="display:none;">
+            <i class="bi bi-bar-chart"></i> Reportes
+          </button>
+
+          <!-- Perfil -->
           <a href="#" class="text-dark" id="profileBtn" role="button">
             <i class="bi bi-person"></i> Mi Perfil
           </a>
-        </div>
 
+          <!-- Panel Repartidor -->
+          <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#repartidorModal"
+            id="btnRepartidor" style="display:none;">
+            <i class="bi bi-truck"></i> Panel Repartidor
+          </button>
+        </div>
       </div>
     </div>
   </header>
+
 
 
   <div class="promo-marquee">
@@ -164,6 +177,67 @@
           <h6>Direcciones registradas</h6>
           <ul id="profileAddresses" class="list-group mb-3"></ul>
           <button class="btn btn-outline-danger btn-sm mb-2" id="logoutBtn">Cerrar sesión</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Panel Repartidor (justo después de #profileModal) -->
+  <div class="modal fade" id="repartidorModal" tabindex="-1" aria-labelledby="repartidorModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="repartidorModalLabel">Panel Repartidor</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <div id="repartidorPedidosList" class="list-group"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Modal Reportes (solo admin) -->
+  <div class="modal fade" id="reportesModal" tabindex="-1" aria-labelledby="reportesModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="reportesModalLabel">Reportes de Ventas y Clientes</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+        </div>
+        <div class="modal-body">
+          <h6>Ingresos mensuales por tienda</h6>
+          <div id="tablaIngresos"></div>
+          <hr>
+          <h6>Clientes frecuentes por tienda</h6>
+          <div id="tablaClientes"></div>
+        </div>
+        <hr>
+        <h6>Cobertura geográfica</h6>
+        <div id="tablaCobertura"></div>
+        <hr>
+        <h6>Reportes de Repartidores</h6>
+        <div id="tablaRepartidores"></div>
+        <div id="tablaHistorialRepartidor"></div>
+        <div id="tablaTiempoEntrega"></div>
+        <hr>
+        <h6>Productos más vendidos por categoría</h6>
+        <div id="tablaProductosVendidos"></div>
+        <hr>
+        <h6>Resumen noviembre 2025 por tienda</h6>
+        <div id="tablaResumenNoviembre"></div>
+        <hr>
+        <h6>Pedidos fuera de tiempo (>45 min)</h6>
+        <div id="tablaPedidosFueraTiempo"></div>
+
+
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+
+
         </div>
       </div>
     </div>
@@ -483,6 +557,7 @@
           const email = document.getElementById('loginEmail').value;
           const password = document.getElementById('loginPassword').value;
           const name = document.getElementById('registerName').value;
+          const role = document.getElementById('userRole').value; // 👈 capturamos el rol
 
           let users = JSON.parse(localStorage.getItem('users') || '{}');
 
@@ -496,7 +571,14 @@
               loginMessage.textContent = 'El usuario ya está registrado.';
               loginMessage.style.color = 'red';
             } else {
-              users[email] = { password, name };
+              // 👇 guardamos también el rol
+              users[email] = { password, name, role };
+
+              // Si es repartidor, asignamos un repartidorId
+              if (role === "repartidor") {
+                users[email].repartidorId = "r_" + email.split("@")[0];
+              }
+
               localStorage.setItem('users', JSON.stringify(users));
               loginMessage.textContent = '¡Registro exitoso! Ahora puedes iniciar sesión.';
               loginMessage.style.color = 'green';
@@ -524,6 +606,22 @@
                 // eliminar backdrops sobrantes por seguridad y quitar clase modal-open
                 document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
                 document.body.classList.remove('modal-open');
+
+                // 👇 control de acceso por rol
+                const repartidorBtn = document.getElementById('btnRepartidor');
+                const reportesBtn = document.getElementById('btnReportes');
+                if (users[email].role === "repartidor" && repartidorBtn) {
+                  repartidorBtn.style.display = "inline-block";
+                  const modal = new bootstrap.Modal(document.getElementById('repartidorModal'));
+                  modal.show();
+                } else if (repartidorBtn) {
+                  repartidorBtn.style.display = "none";
+                }
+                if (users[email].role === "admin" && reportesBtn) {
+                  reportesBtn.style.display = "inline-block";
+                } else if (reportesBtn) {
+                  reportesBtn.style.display = "none";
+                }
               }, 1000);
             } else {
               loginMessage.textContent = 'Correo o contraseña incorrectos.';
@@ -532,6 +630,7 @@
           }
         });
       }
+
 
       // Actualizar texto del botón de perfil si hay sesión activa
       const logged = localStorage.getItem('loggedUser');
@@ -604,9 +703,39 @@
 
       modalBody.appendChild(pedidosContainer);
 
-      // Mostrar modal usando getOrCreateInstance para evitar instancias duplicadas/backdrop stuck
+      // ➕ Mostrar rol y responsabilidades
+      const roleInfo = document.createElement('div');
+      roleInfo.className = "mt-3";
+
+      if (user.role === "repartidor") {
+        roleInfo.innerHTML = `
+      <h6>Rol: Repartidor 🚚</h6>
+      <p class="text-muted mb-1">ID de repartidor: ${user.repartidorId || 'No asignado'}</p>
+      <p class="text-muted mb-1">Responsabilidades: aceptar pedidos, actualizar estado y confirmar entregas.</p>
+    `;
+      } else if (user.role === "admin") {
+        roleInfo.innerHTML = `
+      <h6>Rol: Súper Administrador 🛠️</h6>
+      <p class="text-muted mb-1">Gestión integral de repartidores, tiendas, categorías y reportes.</p>
+    `;
+      } else {
+        roleInfo.innerHTML = `
+      <h6>Rol: Cliente 🛒</h6>
+      <p class="text-muted mb-1">Puede registrar datos y realizar pedidos.</p>
+    `;
+      }
+
+      modalBody.appendChild(roleInfo);
+
+      // Mostrar modal
       bootstrap.Modal.getOrCreateInstance(document.getElementById('profileModal')).show();
     }
+
+    document.getElementById("profileBtn").addEventListener("click", function () {
+      if (currentUser) {
+        showProfileModal(currentUser);
+      }
+    });
 
     // Guardar foto de perfil
     const photoInputEl = document.getElementById('photoInput');
@@ -676,6 +805,8 @@
         document.body.classList.remove('modal-open');
       });
     }
+    // 
+
   </script>
 
   <!-- Modal Carrito -->
@@ -692,6 +823,11 @@
 
           <div class="d-grid gap-2">
             <button class="btn btn-danger" id="confirmarPedidoBtn">Confirmar Pedido</button>
+            <!-- Botón para confirmar sin pago (efectivo / contra entrega) -->
+            <button class="btn btn-secondary w-100">
+              Confirmar sin pagar (Efectivo)
+            </button>
+
             <!-- Contenedor para el botón de PayPal -->
             <div id="paypal-button-container" class="mt-2"></div>
           </div>
@@ -699,6 +835,9 @@
       </div>
     </div>
   </div>
+
+
+
 
   <!-- TOAST: notificación cuando falta dirección -->
   <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
@@ -755,7 +894,7 @@
       btn.addEventListener('click', function () {
         const nombre = this.dataset.nombre;
         const precio = parseInt(this.dataset.precio) || 0;
-        carrito.push({ nombre, precio });
+        carrito.push({ nombre, precio, tiendaSeleccionada });
         actualizarCarrito();
       });
     });
@@ -913,12 +1052,8 @@
             console.info('PayPal Buttons renderizados y listos.');
           });
         })
-        .catch(err => {
-          console.error('initPayPalButtons fallo:', err);
-          alert('Método de pago temporalmente no disponible. Revisa la consola (F12).');
-          throw err;
-        });
     }
+
 
     // Poll para buscar el botón interno de PayPal (intento de auto-click)
     function clickPaypalInternalButton(timeoutMs = 5000, intervalMs = 300) {
@@ -963,7 +1098,7 @@
           initPayPalButtons().catch(() => { /* ya notifica al usuario en init */ });
         });
 
-        carritoModalEl.addEventListener('hidden.bs.modal', function () {
+        carritoModalEl.addEventListener('hisdden.bs.modal', function () {
           // limpiar container PayPal y backdrops al cerrar carrito
           if (paypalContainer) paypalContainer.innerHTML = '';
           window.__paypalButtonsReady = false;
@@ -1158,7 +1293,6 @@
       }
     })();
 
-    // ConfirmarPedido: abrir modal + tratar de auto-click (mejorado y con espera) + validación de dirección
     (function attachConfirm() {
       const confirmarEl = document.getElementById('confirmarPedidoBtn');
       if (!confirmarEl) return;
@@ -1168,6 +1302,16 @@
 
       nuevo.addEventListener('click', async function (e) {
         e.preventDefault();
+
+        // sincronizar desde localStorage para evitar desincronías
+        try {
+          carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
+          window.carrito = carrito;
+        } catch (err) {
+          carrito = [];
+          window.carrito = carrito;
+        }
+
         if (!Array.isArray(carrito) || carrito.length === 0) {
           alert('Tu carrito está vacío.');
           return;
@@ -1193,8 +1337,7 @@
         if (!tieneDireccion) {
           // mostrar toast de aviso y no continuar con el flujo de pago
           const toastEl = document.getElementById('toastNoDireccion');
-          const toast = new bootstrap.Toast(toastEl, { delay: 6000 });
-          toast.show();
+          if (toastEl) new bootstrap.Toast(toastEl, { delay: 6000 }).show();
           return;
         }
 
@@ -1216,54 +1359,117 @@
       });
     })();
 
+    // ...inserted: handler para "Confirmar sin pagar (Efectivo)"...
+    (function handleConfirmarSinPago() {
+      const btn = document.getElementById('confirmarSinPagoBtn');
+      if (!btn) return;
+      btn.addEventListener('click', function () {
+        // sincronizar carrito
+        try { carrito = JSON.parse(localStorage.getItem('carrito') || '[]'); window.carrito = carrito; } catch (e) { carrito = []; window.carrito = carrito; }
+        if (!Array.isArray(carrito) || carrito.length === 0) { alert('Tu carrito está vacío.'); return; }
+
+        // verificar dirección
+        let direccion = localStorage.getItem('direccion') || '';
+        if (!direccion) {
+          const logged = localStorage.getItem('loggedUser');
+          if (logged) {
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            const user = users[logged];
+            if (user && Array.isArray(user.addresses) && user.addresses.length > 0) {
+              direccion = user.addresses[0];
+              localStorage.setItem('direccion', direccion);
+            }
+          }
+        }
+        if (!direccion || !direccion.trim()) { const t = document.getElementById('toastNoDireccion'); if (t) new bootstrap.Toast(t, { delay: 6000 }).show(); return; }
+
+        // crear pedido local
+        const total = carrito.reduce((s, i) => s + (Number(i.precio) || 0), 0);
+        const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
+
+        const pedido = {
+          id: 'local_' + Date.now(),
+          productos: carrito,
+          total,
+          fecha: new Date().toISOString(),   // ✅ formato seguro
+          direccion,
+          estado: 'pendiente',
+          metodo: 'efectivo',
+          cliente: localStorage.getItem('loggedUser') || 'invitado',
+          repartidorId: null,
+          tienda: carrito.find(p => p.tienda)?.tienda || "sin_tienda"
+        };
+
+
+        // guardar pedidos por usuario
+        const email = pedido.cliente;
+        const pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
+        pedidosPorUsuario[email] = pedidosPorUsuario[email] || [];
+        pedidosPorUsuario[email].push(pedido);
+        localStorage.setItem('pedidosPorUsuario', JSON.stringify(pedidosPorUsuario));
+
+        // guardar globales
+        const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+        pedidosGlobales.push(pedido);
+        localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
+
+        // limpiar carrito y UI
+        carrito = [];
+        localStorage.setItem('carrito', JSON.stringify([]));
+        if (typeof actualizarCarrito === 'function') actualizarCarrito();
+
+        alert('Pedido confirmado. Pagarás en efectivo al recibirlo.');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).hide();
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+      });
+    })();
     document.addEventListener('DOMContentLoaded', function () {
-      // Catálogo de ejemplo }
+      // Catálogo de ejemplo con tiendas asignadas
       const productosCatalogo = {
         hamburguesas: [
-          { id: 'h1', nombre: 'Classic Burger', precio: 15900, img: 'images/Hamburguesa.jpg', descripcion: 'Carne, lechuga, tomate y salsa especial.' },
-          { id: 'h2', nombre: 'Bacon Burger', precio: 17900, img: 'images/Ham_Ata.jpg', descripcion: 'Con bacon crocante y queso.' },
-          { id: 'h3', nombre: 'Cheese Burger', precio: 16900, img: 'images/Ham_Smash.jpg', descripcion: 'Doble queso fundido.' },
-          { id: 'h4', nombre: 'Chicken Burger', precio: 27000, img: 'images/Ham_Chicken.png', descripcion: 'Pollo empanado, lechuga y mayonesa.' },
-          { id: 'h5', nombre: 'Veggie Burger', precio: 13900, img: 'images/Ham_Veggie.png', descripcion: 'Hamburguesa vegetal con aguacate.' },
-          { id: 'h6', nombre: 'Double Meat', precio: 19900, img: 'images/Ham_Double.png', descripcion: 'Doble carne, doble queso.' },
-          { id: 'h7', nombre: 'Spicy Burger', precio: 16900, img: 'images/Ham_Spicy.png', descripcion: 'Salsa picante y jalapeños.' },
-          { id: 'h8', nombre: 'Mushroom Burger', precio: 16900, img: 'images/Ham_Mushroom.png', descripcion: 'Champiñones salteados y queso suizo.' },
-          { id: 'h9', nombre: 'Blue Cheese', precio: 17900, img: 'images/Ham_Blue.png', descripcion: 'Queso azul y cebolla caramelizada.' },
-          { id: 'h10', nombre: 'BBQ Deluxe', precio: 18900, img: 'images/Ham_BBQ.png', descripcion: 'Salsa BBQ, onion rings y bacon.' },
-          { id: 'h11', nombre: 'Guacamole Burger', precio: 17900, img: 'images/Ham_Guac.png', descripcion: 'Carne jugosa con guacamole fresco y totopos crujientes.' },
-          { id: 'h12', nombre: 'Tex-Mex Burger', precio: 18900, img: 'images/Ham_Tex.png', descripcion: 'Salsa mexicana, jalapeños y queso cheddar fundido.' },
-          { id: 'h13', nombre: 'Hawaiian Burger', precio: 16900, img: 'images/Ham_Hawaii.png', descripcion: 'Piña asada, jamón y salsa teriyaki.' },
-          { id: 'h14', nombre: 'Truffle Burger', precio: 21900, img: 'images/Ham_Trufa.png', descripcion: 'Queso gouda y mayonesa de trufa negra.' },
-          { id: 'h15', nombre: 'Egg & Cheese Burger', precio: 17900, img: 'images/Ham_Egg.png', descripcion: 'Huevo frito, queso cheddar y tocino.' },
-          { id: 'h16', nombre: 'Mediterranean Burger', precio: 18900, img: 'images/Ham_Med.png', descripcion: 'Queso feta, aceitunas negras y salsa tzatziki.' },
-          { id: 'h17', nombre: 'Smoky Burger', precio: 19900, img: 'images/Ham_Smoke.png', descripcion: 'Sabor ahumado con salsa BBQ artesanal.' },
-          { id: 'h18', nombre: 'Crispy Onion Burger', precio: 17900, img: 'images/Ham_Onion.png', descripcion: 'Crujientes aros de cebolla y queso americano.' },
-          { id: 'h19', nombre: 'Buffalo Chicken Burger', precio: 16900, img: 'images/Ham_Buffalo.png', descripcion: 'Pollo en salsa buffalo con aderezo ranch.' },
-          { id: 'h20', nombre: 'Italian Burger', precio: 18900, img: 'images/Ham_Italian.png', descripcion: 'Queso mozzarella, tomate seco y pesto de albahaca.' }
-
+          { id: 'h1', nombre: 'Classic Burger', precio: 15900, img: 'images/Hamburguesa.jpg', descripcion: 'Carne, lechuga, tomate y salsa especial.', tienda: 'La Burger' },
+          { id: 'h2', nombre: 'Bacon Burger', precio: 17900, img: 'images/Ham_Ata.jpg', descripcion: 'Con bacon crocante y queso.', tienda: 'ATA Burger' },
+          { id: 'h3', nombre: 'Cheese Burger', precio: 16900, img: 'images/Ham_Smash.jpg', descripcion: 'Doble queso fundido.', tienda: 'Smash Burger' },
+          { id: 'h4', nombre: 'Chicken Burger', precio: 27000, img: 'images/Ham_Chicken.png', descripcion: 'Pollo empanado, lechuga y mayonesa.', tienda: 'La Burger' },
+          { id: 'h5', nombre: 'Veggie Burger', precio: 13900, img: 'images/Ham_Veggie.png', descripcion: 'Hamburguesa vegetal con aguacate.', tienda: 'La Burger' },
+          { id: 'h6', nombre: 'Double Meat', precio: 19900, img: 'images/Ham_Double.png', descripcion: 'Doble carne, doble queso.', tienda: 'ATA Burger' },
+          { id: 'h7', nombre: 'Spicy Burger', precio: 16900, img: 'images/Ham_Spicy.png', descripcion: 'Salsa picante y jalapeños.', tienda: 'Smash Burger' },
+          { id: 'h8', nombre: 'Mushroom Burger', precio: 16900, img: 'images/Ham_Mushroom.png', descripcion: 'Champiñones salteados y queso suizo.', tienda: 'Oliva Pizza Garden' },
+          { id: 'h9', nombre: 'Blue Cheese', precio: 17900, img: 'images/Ham_Blue.png', descripcion: 'Queso azul y cebolla caramelizada.', tienda: 'La Burger' },
+          { id: 'h10', nombre: 'BBQ Deluxe', precio: 18900, img: 'images/Ham_BBQ.png', descripcion: 'Salsa BBQ, onion rings y bacon.', tienda: 'Drive Pizza' },
+          { id: 'h11', nombre: 'Guacamole Burger', precio: 17900, img: 'images/Ham_Guac.png', descripcion: 'Carne jugosa con guacamole fresco y totopos crujientes.', tienda: 'ATA Burger' },
+          { id: 'h12', nombre: 'Tex-Mex Burger', precio: 18900, img: 'images/Ham_Tex.png', descripcion: 'Salsa mexicana, jalapeños y queso cheddar fundido.', tienda: 'Smash Burger' },
+          { id: 'h13', nombre: 'Hawaiian Burger', precio: 16900, img: 'images/Ham_Hawaii.png', descripcion: 'Piña asada, jamón y salsa teriyaki.', tienda: 'Oliva Pizza Garden' },
+          { id: 'h14', nombre: 'Truffle Burger', precio: 21900, img: 'images/Ham_Trufa.png', descripcion: 'Queso gouda y mayonesa de trufa negra.', tienda: 'La Burger' },
+          { id: 'h15', nombre: 'Egg & Cheese Burger', precio: 17900, img: 'images/Ham_Egg.png', descripcion: 'Huevo frito, queso cheddar y tocino.', tienda: 'Smash Burger' },
+          { id: 'h16', nombre: 'Mediterranean Burger', precio: 18900, img: 'images/Ham_Med.png', descripcion: 'Queso feta, aceitunas negras y salsa tzatziki.', tienda: 'Oliva Pizza Garden' },
+          { id: 'h17', nombre: 'Smoky Burger', precio: 19900, img: 'images/Ham_Smoke.png', descripcion: 'Sabor ahumado con salsa BBQ artesanal.', tienda: 'Drive Pizza' },
+          { id: 'h18', nombre: 'Crispy Onion Burger', precio: 17900, img: 'images/Ham_Onion.png', descripcion: 'Crujientes aros de cebolla y queso americano.', tienda: 'La Burger' },
+          { id: 'h19', nombre: 'Buffalo Chicken Burger', precio: 16900, img: 'images/Ham_Buffalo.png', descripcion: 'Pollo en salsa buffalo con aderezo ranch.', tienda: 'ATA Burger' },
+          { id: 'h20', nombre: 'Italian Burger', precio: 18900, img: 'images/Ham_Italian.png', descripcion: 'Queso mozzarella, tomate seco y pesto de albahaca.', tienda: 'Oliva Pizza Garden' }
         ],
         pizzas: [
-          { id: 'p1', nombre: 'Margarita', precio: 24900, img: 'images/Pizza.jpeg', descripcion: 'Salsa de tomate, mozzarella y albahaca.' },
-          { id: 'p2', nombre: 'Pepperoni', precio: 26900, img: 'images/promo1.png', descripcion: 'Extra pepperoni y queso.' },
-          { id: 'p3', nombre: 'Hawaiana', precio: 25900, img: 'images/Pizza_Hawai.png', descripcion: 'Jamón y piña.' },
-          { id: 'p4', nombre: 'Cuatro Quesos', precio: 27900, img: 'images/Pizza_Drive.jpg', descripcion: 'Mozzarella, gorgonzola, parmesano y cheddar.' },
-          { id: 'p5', nombre: 'BBQ Chicken', precio: 28900, img: 'images/Pizza_BBQ.png', descripcion: 'Pollo, salsa BBQ y cilantro.' },
-          { id: 'p6', nombre: 'Vegetariana', precio: 23900, img: 'images/Pizza.jpeg', descripcion: 'Pimientos, champiñones y aceitunas.' },
-          { id: 'p7', nombre: 'Mexicana', precio: 26900, img: 'images/Pizza_Mexicana.png', descripcion: 'Carne, jalapeños y salsa picante.' },
-          { id: 'p8', nombre: 'Prosciutto', precio: 29900, img: 'images/Pizza_Pro.png', descripcion: 'Jamón serrano y rúcula.' },
-          { id: 'p9', nombre: 'Marinera', precio: 29900, img: 'images/Pizza_Toscana.png', descripcion: 'Mariscos y ajo.' },
-          { id: 'p10', nombre: 'Especial de la Casa', precio: 31900, img: 'images/Pizza_Garden.jpg', descripcion: 'Ingredientes premium y salsa secreta.' },
-          { id: 'p11', nombre: 'Carbonara', precio: 28900, img: 'images/Pizza_Carbonara.png', descripcion: 'Salsa blanca, panceta, huevo y queso parmesano.' },
-          { id: 'p12', nombre: 'Trufada', precio: 32900, img: 'images/Pizza_Trufa.png', descripcion: 'Crema de trufa, champiñones y queso gouda.' },
-          { id: 'p13', nombre: 'Mediterránea', precio: 27900, img: 'images/Pizza_Mediterranea.png', descripcion: 'Aceitunas negras, tomate seco y queso feta.' },
-          { id: 'p14', nombre: 'Pollo y Champiñones', precio: 26900, img: 'images/Pizza_Pollo.png', descripcion: 'Pollo asado, champiñones y crema de ajo.' },
-          { id: 'p15', nombre: 'Napolitana', precio: 25900, img: 'images/Pizza_Napolitana.png', descripcion: 'Salsa de tomate natural, mozzarella y orégano.' },
-          { id: 'p16', nombre: 'Toscana', precio: 29900, img: 'images/Pizza_Toscana.png', descripcion: 'Salchicha italiana, pimientos y cebolla morada.' },
-          { id: 'p17', nombre: 'Suprema', precio: 31900, img: 'images/Pizza_Suprema.png', descripcion: 'Carne, pepperoni, champiñones y pimientos.' },
-          { id: 'p18', nombre: 'Campesina', precio: 24900, img: 'images/Pizza_Campesina.png', descripcion: 'Maíz tierno, tocineta y cebolla blanca.' },
-          { id: 'p19', nombre: 'Del Mar', precio: 33900, img: 'images/Pizza_Mar.png', descripcion: 'Camarones, calamar y toque de limón.' },
-          { id: 'p20', nombre: 'Vegana', precio: 27900, img: 'images/Pizza_Vegana.png', descripcion: 'Base de tomate natural con vegetales frescos y queso vegano.' }
-
+          { id: 'p1', nombre: 'Margarita', precio: 24900, img: 'images/Pizza.jpeg', descripcion: 'Salsa de tomate, mozzarella y albahaca.', tienda: 'Oliva Pizza Garden' },
+          { id: 'p2', nombre: 'Pepperoni', precio: 26900, img: 'images/promo1.png', descripcion: 'Extra pepperoni y queso.', tienda: 'Drive Pizza' },
+          { id: 'p3', nombre: 'Hawaiana', precio: 25900, img: 'images/Pizza_Hawai.png', descripcion: 'Jamón y piña.', tienda: 'The Pizza Company' },
+          { id: 'p4', nombre: 'Cuatro Quesos', precio: 27900, img: 'images/Pizza_Drive.jpg', descripcion: 'Mozzarella, gorgonzola, parmesano y cheddar.', tienda: 'Drive Pizza' },
+          { id: 'p5', nombre: 'BBQ Chicken', precio: 28900, img: 'images/Pizza_BBQ.png', descripcion: 'Pollo, salsa BBQ y cilantro.', tienda: 'La Burger' },
+          { id: 'p6', nombre: 'Vegetariana', precio: 23900, img: 'images/Pizza.jpeg', descripcion: 'Pimientos, champiñones y aceitunas.', tienda: 'Oliva Pizza Garden' },
+          { id: 'p7', nombre: 'Mexicana', precio: 26900, img: 'images/Pizza_Mexicana.png', descripcion: 'Carne, jalapeños y salsa picante.', tienda: 'ATA Burger' },
+          { id: 'p8', nombre: 'Prosciutto', precio: 29900, img: 'images/Pizza_Pro.png', descripcion: 'Jamón serrano y rúcula.', tienda: 'Oliva Pizza Garden' },
+          { id: 'p9', nombre: 'Marinera', precio: 29900, img: 'images/Pizza_Toscana.png', descripcion: 'Mariscos y ajo.', tienda: 'Drive Pizza' },
+          { id: 'p10', nombre: 'Especial de la Casa', precio: 31900, img: 'images/Pizza_Garden.jpg', descripcion: 'Ingredientes premium y salsa secreta.', tienda: 'Oliva Pizza Garden' },
+          { id: 'p11', nombre: 'Carbonara', precio: 28900, img: 'images/Pizza_Carbonara.png', descripcion: 'Salsa blanca, panceta, huevo y queso parmesano.', tienda: 'The Pizza Company' },
+          { id: 'p12', nombre: 'Trufada', precio: 32900, img: 'images/Pizza_Trufa.png', descripcion: 'Crema de trufa, champiñones y queso gouda.', tienda: 'La Burger' },
+          { id: 'p13', nombre: 'Mediterránea', precio: 27900, img: 'images/Pizza_Mediterranea.png', descripcion: 'Aceitunas negras, tomate seco y queso feta.', tienda: 'Oliva Pizza Garden' },
+          { id: 'p14', nombre: 'Pollo y Champiñones', precio: 26900, img: 'images/Pizza_Pollo.png', descripcion: 'Pollo asado, champiñones y crema de ajo.', tienda: 'Drive Pizza' },
+          { id: 'p15', nombre: 'Napolitana', precio: 25900, img: 'images/Pizza_Napolitana.png', descripcion: 'Salsa de tomate natural, mozzarella y orégano.', tienda: 'The Pizza Company' },
+          { id: 'p16', nombre: 'Toscana', precio: 29900, img: 'images/Pizza_Toscana.png', descripcion: 'Salchicha italiana, pimientos y cebolla morada.', tienda: 'Drive Pizza' },
+          { id: 'p17', nombre: 'Suprema', precio: 31900, img: 'images/Pizza_Suprema.png', descripcion: 'Carne, pepperoni, champiñones y pimientos.', tienda: 'The Pizza Company' },
+          { id: 'p18', nombre: 'Campesina', precio: 24900, img: 'images/Pizza_Campesina.png', descripcion: 'Maíz tierno, tocineta y cebolla blanca.', tienda: 'Oliva Pizza Garden' },
+          { id: 'p19', nombre: 'Del Mar', precio: 33900, img: 'images/Pizza_Mar.png', descripcion: 'Camarones, calamar y toque de limón.', tienda: 'Drive Pizza' },
+          { id: 'p20', nombre: 'Vegana', precio: 27900, img: 'images/Pizza_Vegana.png', descripcion: 'Base de tomate natural con vegetales frescos y queso vegano.', tienda: 'Oliva Pizza Garden' }
         ],
         bebidas: [
           { id: 'b1', nombre: 'Gaseosa 500ml', precio: 3900, img: 'images/Gaseosa.jpg', descripcion: 'Coca Cola o similar.' },
@@ -1316,7 +1522,13 @@
             <p class="card-text text-muted small">${p.descripcion}</p>
             <div class="mt-auto d-flex justify-content-between align-items-center">
               <strong>$${p.precio.toLocaleString()}</strong>
-              <button class="btn btn-outline-danger btn-sm agregar-carrito-por-id" data-id="${p.id}" data-nombre="${p.nombre}" data-precio="${p.precio}">Agregar</button>
+<button class="btn btn-outline-danger btn-sm agregar-carrito-por-id"
+        data-id="${p.id}"
+        data-nombre="${p.nombre}"
+        data-precio="${p.precio}"
+        data-tienda="${p.tienda}">
+  Agregar
+</button>
             </div>
           </div>
         </div>
@@ -1332,14 +1544,19 @@
           btn.addEventListener('click', function () {
             const nombre = this.dataset.nombre;
             const precio = parseInt(this.dataset.precio) || 0;
-            carrito.push({ nombre, precio });
+            const tienda = this.dataset.tienda || "sin_tienda";
+            carrito.push({ nombre, precio, tienda });
+
+            carrito.push({ nombre, precio, tienda });
             localStorage.setItem('carrito', JSON.stringify(carrito));
             if (typeof actualizarCarrito === 'function') actualizarCarrito();
+
             const original = this.innerHTML;
             this.innerHTML = 'Agregado';
             setTimeout(() => this.innerHTML = original, 900);
           });
         });
+
       }
 
       // click en tarjetas de categoría
@@ -1359,6 +1576,521 @@
         });
       }
     });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    (function () {
+      const STORE_REP = 'repartidores';
+      if (!localStorage.getItem(STORE_REP)) localStorage.setItem(STORE_REP, JSON.stringify([]));
+      function saveRepartidores(arr) { localStorage.setItem(STORE_REP, JSON.stringify(arr)); }
+      function getRepartidores() { return JSON.parse(localStorage.getItem(STORE_REP) || '[]'); }
+      function uid(prefix = 'r') { return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8); }
+
+
+      window.createRepartidor = function (data) {
+        const arr = getRepartidores();
+        const newR = Object.assign({ id: data.id || uid('r'), nombre: data.nombre || 'Repartidor', telefono: data.telefono || '', activo: true, disponible: true }, data);
+        arr.push(newR);
+        saveRepartidores(arr);
+        return newR;
+      };
+      window.getRepartidor = function (id) { return getRepartidores().find(r => r.id === id) || null; };
+      window.updateRepartidor = function (id, patch) {
+        const arr = getRepartidores(); const i = arr.findIndex(r => r.id === id); if (i === -1) return null;
+        arr[i] = Object.assign({}, arr[i], patch, { updatedAt: new Date().toISOString() }); saveRepartidores(arr); return arr[i];
+      };
+      window.deleteRepartidor = function (id) { const arr = getRepartidores().filter(r => r.id !== id); saveRepartidores(arr); return true; };
+      window.listRepartidores = getRepartidores;
+
+
+      function _getPedidosGlobales() { return JSON.parse(localStorage.getItem('pedidosGlobales') || '[]'); }
+      function _savePedidosGlobales(arr) { localStorage.setItem('pedidosGlobales', JSON.stringify(arr)); }
+      function _savePedidoPorUsuario(email, pedido) {
+        const porUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
+        porUsuario[email] = porUsuario[email] || [];
+        const idx = porUsuario[email].findIndex(p => p.id === pedido.id);
+        if (idx >= 0) porUsuario[email][idx] = pedido; else porUsuario[email].push(pedido);
+        localStorage.setItem('pedidosPorUsuario', JSON.stringify(porUsuario));
+      }
+
+
+      window.assignOrderToRepartidor = function (pedidoId, repartidorId) {
+        const pedidos = _getPedidosGlobales();
+        const pidx = pedidos.findIndex(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
+        if (pidx === -1) return null;
+        pedidos[pidx].repartidorId = repartidorId; pedidos[pidx].estado = 'asignado';
+        pedidos[pidx].historial = pedidos[pidx].historial || []; pedidos[pidx].historial.push({ evento: 'asignado', repartidorId, at: new Date().toISOString() });
+        _savePedidosGlobales(pedidos);
+        const cliente = pedidos[pidx].cliente || localStorage.getItem('loggedUser') || 'invitado';
+        _savePedidoPorUsuario(cliente, pedidos[pidx]);
+        return pedidos[pidx];
+      };
+
+
+      window.repartidorAcceptOrder = function (pedidoId, repartidorId) {
+        const pedidos = _getPedidosGlobales();
+        const p = pedidos.find(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
+        if (!p) return null;
+        if (p.repartidorId && p.repartidorId !== repartidorId) return { error: 'Pedido asignado a otro repartidor' };
+        p.estado = 'aceptado'; p.historial = p.historial || []; p.historial.push({ evento: 'aceptado', repartidorId, at: new Date().toISOString() });
+        _savePedidosGlobales(pedidos); _savePedidoPorUsuario(p.cliente || localStorage.getItem('loggedUser') || 'invitado', p);
+        updateRepartidor(repartidorId, { disponible: false }); renderPedidosRepartidor();
+        return p;
+      };
+
+
+      window.updateOrderStatus = function (pedidoId, status, meta = {}) {
+        const pedidos = _getPedidosGlobales();
+        const p = pedidos.find(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
+        if (!p) return null;
+        p.estado = status; p.historial = p.historial || []; p.historial.push(Object.assign({ evento: status, at: new Date().toISOString() }, meta));
+        if (status === 'entregado') { p.entregadoEn = new Date().toISOString(); if (p.repartidorId) updateRepartidor(p.repartidorId, { disponible: true }); }
+        _savePedidosGlobales(pedidos); _savePedidoPorUsuario(p.cliente || localStorage.getItem('loggedUser') || 'invitado', p); renderPedidosRepartidor(); return p;
+      };
+
+
+      window.repartidorConfirmDelivery = function (pedidoId, repartidorId) { return updateOrderStatus(pedidoId, 'entregado', { repartidorId }); };
+      window.listPedidosPorRepartidor = function (repartidorId) { return _getPedidosGlobales().filter(p => p.repartidorId === repartidorId); };
+
+
+      if (getRepartidores().length === 0) {
+        createRepartidor({ id: 'r_juan', nombre: 'Juan Pérez', telefono: '+573001112223', disponible: true });
+        createRepartidor({ id: 'r_maria', nombre: 'María Gomez', telefono: '+573004445556', disponible: true });
+      }
+
+
+      function renderPedidosRepartidor() {
+        const list = document.getElementById('repartidorPedidosList');
+        if (!list) return;
+
+        const logged = localStorage.getItem('loggedUser');
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        const user = users[logged] || {};
+        const repartidorId = user.repartidorId || logged || '';
+
+        // Filtrar: pedidos pendientes (para aceptar) + pedidos asignados al repartidor
+        const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]')
+          .filter(p => p.estado === 'pendiente' || p.repartidorId === repartidorId);
+
+        list.innerHTML = '';
+        if (!pedidos.length) {
+          list.innerHTML = '<div class="text-muted">No hay pedidos por ahora.</div>';
+          return;
+        }
+
+        pedidos.forEach(p => {
+          const idKey = p.id || p.paypalOrderId;
+          let acciones = '';
+
+          // Botones según estado
+          if (p.estado === 'pendiente' || p.estado === 'pagado') {
+            acciones += `<button class="btn btn-sm btn-success me-1"
+        onclick="repartidorAcceptOrder('${idKey}', '${repartidorId}')">Aceptar</button>`;
+          }
+          if (p.estado === 'aceptado' || p.estado === 'asignado') {
+            acciones += `<button class="btn btn-sm btn-warning me-1"
+        onclick="updateOrderStatus('${idKey}','en_ruta',{repartidorId:'${repartidorId}'})">En ruta</button>`;
+          }
+          if (p.estado === 'en_ruta') {
+            acciones += `<button class="btn btn-sm btn-danger"
+        onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
+          }
+
+          const el = document.createElement('div');
+          el.className = 'list-group-item';
+          el.innerHTML = `
+      <div class="d-flex justify-content-between align-items-start">
+        <div>
+          <strong>${p.cliente || (p.comprador && p.comprador.email) || 'invitado'}</strong> — ${p.fecha || ''}
+          <div class="small text-muted">${p.direccion || ''}</div>
+          <div class="small">Productos: ${p.productos?.map(x => x.nombre).join(', ') || ''}</div>
+        </div>
+        <div class="text-end">
+          <div class="mb-2"><span class="badge bg-info text-dark">${p.estado || 'pendiente'}</span></div>
+          ${acciones}
+        </div>
+      </div>`;
+          list.appendChild(el);
+        });
+      }
+
+      // Refrescar al abrir el modal
+      document.getElementById('repartidorModal')
+        ?.addEventListener('show.bs.modal', renderPedidosRepartidor);
+
+    })();
+  </script>
+
+
+
+  <script>
+
+
+    // Funciones de reportes
+    function calcularIngresosMensuales() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const ingresos = {};
+
+      pedidos.forEach(p => {
+        const tienda = p.tienda || "sin_tienda";
+        const fecha = new Date(p.fecha);
+        const mes = fecha.getMonth() + 1;
+        const anio = fecha.getFullYear();
+        const clave = `${tienda}-${anio}-${mes}`;
+
+        if (!ingresos[clave]) {
+          ingresos[clave] = { tienda, anio, mes, total: 0 };
+        }
+        ingresos[clave].total += p.total;
+      });
+
+      return Object.values(ingresos);
+    }
+
+    // Función para calcular clientes frecuentes por tienda
+    function clientesFrecuentesPorTienda() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const clientes = {};
+
+      pedidos.forEach(p => {
+        const tienda = p.tienda || "sin_tienda";
+        const cliente = p.cliente || "invitado";
+        if (!clientes[tienda]) clientes[tienda] = {};
+        if (!clientes[tienda][cliente]) clientes[tienda][cliente] = 0;
+        clientes[tienda][cliente]++;
+      });
+
+      const resultado = {};
+      for (const tienda in clientes) {
+        resultado[tienda] = Object.entries(clientes[tienda])
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 3);
+      }
+      return resultado;
+    }
+
+    // Renderizar tablas al abrir el modal de reportes
+    document.addEventListener('DOMContentLoaded', function () {
+      const reportesModal = document.getElementById('reportesModal');
+      if (reportesModal) {
+        reportesModal.addEventListener('shown.bs.modal', function () {
+          const ingresos = calcularIngresosMensuales();
+          const clientes = clientesFrecuentesPorTienda();
+
+          // Tabla de ingresos
+          let htmlIngresos = `<table class="table table-striped">
+          <thead><tr><th>Tienda</th><th>Año</th><th>Mes</th><th>Total</th></tr></thead><tbody>`;
+          ingresos.forEach(i => {
+            htmlIngresos += `<tr><td>${i.tienda}</td><td>${i.anio}</td><td>${i.mes}</td><td>$${i.total.toLocaleString()}</td></tr>`;
+          });
+          htmlIngresos += `</tbody></table>`;
+          document.getElementById('tablaIngresos').innerHTML = htmlIngresos;
+
+          // Tabla de clientes frecuentes
+          let htmlClientes = "";
+          for (const tienda in clientes) {
+            htmlClientes += `<h6>${tienda}</h6><ul>`;
+            clientes[tienda].forEach(([cliente, veces]) => {
+              htmlClientes += `<li>${cliente} (${veces} pedidos)</li>`;
+            });
+            htmlClientes += `</ul>`;
+          }
+          document.getElementById('tablaClientes').innerHTML = htmlClientes;
+        });
+      }
+    });
+    function coberturaGeograficaDesdeDOM() {
+      const cards = document.querySelectorAll("#te-sugerimos .card");
+      const cobertura = {};
+
+      cards.forEach(card => {
+        // Nombre de la tienda (primer <p> en la tarjeta)
+        const nombre = card.querySelector("p").textContent.trim();
+
+        // Extraer dirección del enlace (ejemplo: "Cra 44 # 37 - 10 / Tuluá Valle")
+        const direccion = card.querySelector("a").textContent.trim();
+
+        // Aquí asumimos que el último término es el municipio y el penúltimo es el departamento
+        // Puedes ajustar según tu formato
+        const partes = direccion.split(" ");
+        const municipio = partes[partes.length - 2] || "Municipio desconocido";
+        const departamento = partes[partes.length - 1] || "Departamento desconocido";
+
+        if (!cobertura[departamento]) cobertura[departamento] = [];
+        cobertura[departamento].push({ nombre, municipio });
+      });
+
+      return cobertura;
+      function guardarPedido(tienda, cliente, total) {
+        // Recuperar pedidos existentes
+        let pedidos = JSON.parse(localStorage.getItem("pedidosGlobales") || "[]");
+
+        // Crear nuevo pedido
+        const nuevoPedido = {
+          tienda,
+          cliente,
+          fecha: new Date().toISOString(),
+          total
+        };
+
+        // Agregar al array
+        pedidos.push(nuevoPedido);
+
+        // Guardar en localStorage
+        localStorage.setItem("pedidosGlobales", JSON.stringify(pedidos));
+      }
+
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const reportesModal = document.getElementById("reportesModal");
+      if (reportesModal) {
+        reportesModal.addEventListener("shown.bs.modal", function () {
+          const cobertura = coberturaGeograficaDesdeDOM();
+
+          let htmlCobertura = "";
+          for (const depto in cobertura) {
+            htmlCobertura += `<h6>${depto}</h6><ul>`;
+            cobertura[depto].forEach(t => {
+              htmlCobertura += `<li>${t.nombre} — ${t.municipio}</li>`;
+            });
+            htmlCobertura += `</ul>`;
+          }
+
+          document.getElementById("tablaCobertura").innerHTML = htmlCobertura;
+        });
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        const finalizarBtn = document.getElementById("finalizarCompraBtn");
+
+        if (finalizarBtn) {
+          finalizarBtn.addEventListener("click", function () {
+            // Aquí obtienes los datos reales del carrito
+            const tiendaSeleccionada = "Pizza Garden"; // puedes cambiar según el contexto
+            const cliente = localStorage.getItem("loggedUser"); // correo del usuario logueado
+            const totalCarrito = parseInt(document.getElementById("carritoTotal").textContent) || 0;
+
+            if (!cliente) {
+              alert("Debes iniciar sesión para finalizar la compra.");
+              return;
+            }
+
+            guardarPedido(tiendaSeleccionada, cliente, totalCarrito);
+
+            alert("¡Compra registrada correctamente!");
+            bootstrap.Modal.getOrCreateInstance(document.getElementById("carritoModal")).hide();
+          });
+        }
+
+      });
+
+    });
+
+    // Cantidad de pedidos entregados por repartidor
+    function calcularPedidosPorRepartidor() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const resumen = {};
+      pedidos.forEach(p => {
+        if (p.repartidorId && p.estado === "entregado") {
+          if (!resumen[p.repartidorId]) {
+            resumen[p.repartidorId] = { repartidorId: p.repartidorId, total: 0 };
+          }
+          resumen[p.repartidorId].total += 1;
+        }
+      });
+      return Object.values(resumen);
+    }
+
+    // Historial de pedidos por repartidor
+    function historialPedidosRepartidor(repartidorId) {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      return pedidos.filter(p => p.repartidorId === repartidorId);
+    }
+
+    // Tiempo promedio de entrega por repartidor (agrupado por mes)
+    function calcularTiempoPromedioEntrega() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const tiempos = {};
+      pedidos.forEach(p => {
+        if (p.repartidorId && p.estado === "entregado" && p.fechaEntrega) {
+          const inicio = new Date(p.fecha);
+          const fin = new Date(p.fechaEntrega);
+          const minutos = Math.round((fin - inicio) / 60000);
+          const fecha = new Date(p.fecha);
+          const mes = fecha.getMonth() + 1;
+          const anio = fecha.getFullYear();
+          const clave = `${p.repartidorId}-${anio}-${mes}`;
+          if (!tiempos[clave]) {
+            tiempos[clave] = { repartidorId: p.repartidorId, anio, mes, suma: 0, cantidad: 0 };
+          }
+          tiempos[clave].suma += minutos;
+          tiempos[clave].cantidad += 1;
+        }
+      });
+      return Object.values(tiempos).map(t => ({
+        repartidorId: t.repartidorId,
+        anio: t.anio,
+        mes: t.mes,
+        promedio: (t.suma / t.cantidad).toFixed(1)
+      }));
+    }
+
+    // Mostrar reportes de repartidores
+    function mostrarReporteRepartidores() {
+      const resumen = calcularPedidosPorRepartidor();
+      const tiempos = calcularTiempoPromedioEntrega();
+
+      // Tabla de repartidores
+      let htmlRep = `<table class="table table-striped"><thead><tr><th>Repartidor</th><th>Entregas</th></tr></thead><tbody>`;
+      resumen.forEach(r => {
+        htmlRep += `<tr><td>${r.repartidorId}</td><td>${r.total}</td></tr>`;
+      });
+      htmlRep += `</tbody></table>`;
+      const tablaRep = document.getElementById('tablaRepartidores');
+      if (tablaRep) tablaRep.innerHTML = htmlRep;
+
+      // Historial del repartidor actual
+      const logged = localStorage.getItem('loggedUser');
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      const user = users[logged];
+      const repIdActual = user && user.repartidorId;
+      let htmlHist = "";
+      if (repIdActual) {
+        const hist = historialPedidosRepartidor(repIdActual);
+        htmlHist = `<h6>Historial de ${repIdActual}</h6><ul class="list-group">`;
+        hist.forEach(p => {
+          htmlHist += `<li class="list-group-item">${p.fecha || ''} — ${p.cliente || ''} — ${p.estado}</li>`;
+        });
+        htmlHist += `</ul>`;
+      }
+      const tablaHist = document.getElementById('tablaHistorialRepartidor');
+      if (tablaHist) tablaHist.innerHTML = htmlHist;
+
+      // Tiempo promedio
+      let htmlTime = `<table class="table"><thead><tr><th>Repartidor</th><th>Año</th><th>Mes</th><th>Promedio (min)</th></tr></thead><tbody>`;
+      tiempos.forEach(t => {
+        htmlTime += `<tr><td>${t.repartidorId}</td><td>${t.anio}</td><td>${t.mes}</td><td>${t.promedio}</td></tr>`;
+      });
+      htmlTime += `</tbody></table>`;
+      const tablaTiempo = document.getElementById('tablaTiempoEntrega');
+      if (tablaTiempo) tablaTiempo.innerHTML = htmlTime;
+    }
+
+    // Listener al modal de reportes de repartidores
+    const reportesModal = document.getElementById('reportesModal');
+    if (reportesModal) {
+      reportesModal.addEventListener('shown.bs.modal', mostrarReporteRepartidores);
+    }
+    // Productos más vendidos por categoría
+    function productosMasVendidosPorCategoria() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const categorias = {};
+
+      pedidos.forEach(p => {
+        (p.productos || []).forEach(prod => {
+          const cat = prod.categoria || "sin_categoria";
+          if (!categorias[cat]) categorias[cat] = {};
+          if (!categorias[cat][prod.nombre]) categorias[cat][prod.nombre] = 0;
+          categorias[cat][prod.nombre] += prod.cantidad || 1;
+        });
+      });
+
+      // Convertir a array ordenado por cantidad
+      const resultado = {};
+      for (const cat in categorias) {
+        resultado[cat] = Object.entries(categorias[cat])
+          .sort((a, b) => b[1] - a[1]);
+      }
+      return resultado;
+    }
+
+    // Resumen de productos en septiembre 2025 agrupados por tienda
+    function resumenSeptiembre2025PorTienda() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const resumen = {};
+
+      pedidos.forEach(p => {
+        const fecha = new Date(p.fecha);
+        if (fecha.getMonth() === 10 && fecha.getFullYear() === 2025) { // septiembre = mes 8
+          const tienda = p.tienda || "sin_tienda";
+          if (!resumen[tienda]) resumen[tienda] = { productos: {}, total: 0 };
+
+          (p.productos || []).forEach(prod => {
+            if (!resumen[tienda].productos[prod.nombre]) resumen[tienda].productos[prod.nombre] = 0;
+            resumen[tienda].productos[prod.nombre] += prod.cantidad || 1;
+          });
+          resumen[tienda].total += p.total || 0;
+        }
+      });
+
+      return resumen;
+    }
+
+    // Pedidos no entregados en más de 45 minutos
+    function pedidosFueraDeTiempo() {
+      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+      const retrasados = [];
+
+      pedidos.forEach(p => {
+        if (p.estado !== "entregado") return;
+        if (!p.fecha || !p.fechaEntrega) return;
+
+        const inicio = new Date(p.fecha);
+        const fin = new Date(p.fechaEntrega);
+        const minutos = (fin - inicio) / 60000;
+
+        if (minutos > 45) {
+          retrasados.push({
+            tienda: p.tienda || "sin_tienda",
+            repartidor: p.repartidorId || "sin_repartidor",
+            cliente: p.cliente || "invitado",
+            minutos
+          });
+        }
+      });
+
+      return retrasados;
+    }
+
+    // Renderizar en el modal de reportes
+    function mostrarReporteProductosPedidos() {
+      // 1. Productos más vendidos por categoría
+      const vendidos = productosMasVendidosPorCategoria();
+      let htmlVendidos = "";
+      for (const cat in vendidos) {
+        htmlVendidos += `<h6>${cat}</h6><ul>`;
+        vendidos[cat].forEach(([prod, cant]) => {
+          htmlVendidos += `<li>${prod}: ${cant} unidades</li>`;
+        });
+        htmlVendidos += `</ul>`;
+      }
+      document.getElementById('tablaProductosVendidos').innerHTML = htmlVendidos;
+
+      // 2. Resumen noviembre 2025 por tienda
+      const resumen = resumenNoviembre2025PorTienda();
+      let htmlResumen = "";
+      for (const tienda in resumen) {
+        htmlResumen += `<h6>${tienda}</h6><ul>`;
+        for (const prod in resumen[tienda].productos) {
+          htmlResumen += `<li>${prod}: ${resumen[tienda].productos[prod]} unidades</li>`;
+        }
+        htmlResumen += `<li><strong>Total $${resumen[tienda].total.toLocaleString()}</strong></li>`;
+        htmlResumen += `</ul>`;
+      }
+      document.getElementById('tablaResumenNoviembre').innerHTML = htmlResumen;
+
+      // 3. Pedidos fuera de tiempo (>45 min)
+      const retrasados = pedidosFueraDeTiempo();
+      let htmlRetrasados = `<table class="table"><thead><tr><th>Tienda</th><th>Repartidor</th><th>Cliente</th><th>Minutos</th></tr></thead><tbody>`;
+      retrasados.forEach(r => {
+        htmlRetrasados += `<tr><td>${r.tienda}</td><td>${r.repartidor}</td><td>${r.cliente}</td><td>${r.minutos.toFixed(1)}</td></tr>`;
+      });
+      htmlRetrasados += `</tbody></table>`;
+      document.getElementById('tablaPedidosFueraTiempo').innerHTML = htmlRetrasados;
+    }
+
+
   </script>
 </body>
 
