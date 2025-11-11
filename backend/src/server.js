@@ -96,6 +96,58 @@ app.get('/api/pedidos', async (req, res) => {
   }
 });
 
-app.use('/', express.static('../')); // sirve frontend si quieres
+const path = require('path');
+
+// Servir los archivos estáticos desde la carpeta del proyecto principal
+app.use(express.static(path.join(__dirname, '../../')));
+
+// Si el usuario accede a la raíz, enviar el index.html de afuera
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../index.html'));
+});
+
+app.use(express.json()); // asegúrate que esté antes de las rutas
+
+// Guardar pedido en la BD
+app.post('/api/pedidos', async (req, res) => {
+  const { cliente, productos, total, fecha, direccion, estado, metodo, paypalOrderId } = req.body;
+
+  try {
+    // Inserta el pedido principal
+    const pedidoQuery = `
+      INSERT INTO pedido (cliente, total, fecha, direccion, estado, metodo, paypal_order_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id_pedido;
+    `;
+    const { rows } = await pool.query(pedidoQuery, [
+      cliente,
+      total,
+      fecha,
+      direccion,
+      estado,
+      metodo,
+      paypalOrderId
+    ]);
+
+    const id_pedido = rows[0].id_pedido;
+
+    // Inserta cada producto asociado
+    if (Array.isArray(productos)) {
+      for (const p of productos) {
+        await pool.query(
+          `INSERT INTO pedido_detalle (id_pedido, nombre_producto, precio)
+           VALUES ($1, $2, $3)`,
+          [id_pedido, p.nombre, p.precio]
+        );
+      }
+    }
+
+    res.json({ ok: true, id_pedido });
+  } catch (err) {
+    console.error('❌ Error guardando pedido en BD:', err);
+    res.status(500).json({ ok: false, error: 'Error guardando pedido' });
+  }
+});
+
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`API listening on ${PORT}`));
+app.listen(PORT, () => console.log(`✅ API listening on http://localhost:${PORT}`));
