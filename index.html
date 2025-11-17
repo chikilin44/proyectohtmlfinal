@@ -474,7 +474,8 @@
                 <p class="fw-bold mb-0">
                   La Burger <br>
                   📍<a href="https://www.google.com/maps/search/?api=1&query=Cra+26+%23+39+-+16,+El+Príncipe,+Tuluá"
-                    target="_blank" class="text-decoration-none text-dark">Cra 26 # 39 - 16 B / El Príncipe Tuluá</a><br>
+                    target="_blank" class="text-decoration-none text-dark">Cra 26 # 39 - 16 B / El Príncipe
+                    Tuluá</a><br>
                   <a href="https://www.instagram.com/laburger.col" target="_blank" class="text-decoration-none">
                     <i class="bi bi-instagram me-1" style="font-size:1.4rem; color:#E1306C;"></i>@laburger.col
                   </a>
@@ -825,9 +826,10 @@
           <div class="d-grid gap-2">
             <button class="btn btn-danger" id="confirmarPedidoBtn">Confirmar Pedido</button>
             <!-- Botón para confirmar sin pago (efectivo / contra entrega) -->
-            <button class="btn btn-secondary w-100">
+            <button class="btn btn-secondary w-100" id="confirmarSinPagoBtn">
               Confirmar sin pagar (Efectivo)
             </button>
+
 
             <!-- Contenedor para el botón de PayPal -->
             <div id="paypal-button-container" class="mt-2"></div>
@@ -859,7 +861,6 @@
   <script>
     // CARRITO
     let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
-    let tiendaSeleccionada = null; // <-- evita referencia indefinida cuando se usan botones .agregar-carrito
     // mantener referencia global por compatibilidad con partes del código que usan window.carrito
     window.carrito = carrito;
 
@@ -1365,7 +1366,8 @@
     (function handleConfirmarSinPago() {
       const btn = document.getElementById('confirmarSinPagoBtn');
       if (!btn) return;
-      btn.addEventListener('click', async function () {
+      btn.addEventListener('click', function () {
+        // sincronizar carrito
         try { carrito = JSON.parse(localStorage.getItem('carrito') || '[]'); window.carrito = carrito; } catch (e) { carrito = []; window.carrito = carrito; }
         if (!Array.isArray(carrito) || carrito.length === 0) { alert('Tu carrito está vacío.'); return; }
 
@@ -1384,14 +1386,10 @@
         }
         if (!direccion || !direccion.trim()) { const t = document.getElementById('toastNoDireccion'); if (t) new bootstrap.Toast(t, { delay: 6000 }).show(); return; }
 
-        const total = carrito.reduce((s, i) => s + (Number(i.precio || i.precio_uni) || 0) * (i.cantidad || 1), 0);
+        // crear pedido local
+        const total = carrito.reduce((s, i) => s + (Number(i.precio) || 0), 0);
+        const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
 
-        // construir cuerpo según tu backend
-        const productosPayload = carrito.map(p => ({
-          id_producto: p.id_producto || p.id || null,
-          cantidad: p.cantidad || 1,
-          precio_uni: p.precio_uni || p.precio || p.precio_unitario || 0
-        }));
         const pedido = {
           id: 'local_' + Date.now(),
           productos: carrito,
@@ -1405,67 +1403,28 @@
           tienda: carrito.find(p => p.tienda)?.tienda || "sin_tienda"
         };
 
-        // identificar cliente (si tienes cedula asociada a usuario, úsala; si no, envía null y el backend podrá manejarlo)
-        const logged = localStorage.getItem('loggedUser');
-        let cedula_cliente = null;
-        if (logged) {
-          const users = JSON.parse(localStorage.getItem('users') || '{}');
-          const user = users[logged];
-          if (user && user.cedula) cedula_cliente = user.cedula; // si guardas cédula en el perfil
-        }
 
-        // id_tienda: si tus productos tienen id_tienda, toma el primero; sino enviar null
-        const id_tienda = carrito.find(p => p.id_tienda)?.id_tienda || null;
+        // guardar pedidos por usuario
+        const email = pedido.cliente;
+        const pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
+        pedidosPorUsuario[email] = pedidosPorUsuario[email] || [];
+        pedidosPorUsuario[email].push(pedido);
+        localStorage.setItem('pedidosPorUsuario', JSON.stringify(pedidosPorUsuario));
 
-        const payload = {
-          cedula_cliente,
-          id_tienda,
-          total,
-          productos: productosPayload
-        };
+        // guardar globales
+        const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+        pedidosGlobales.push(pedido);
+        localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
 
-        try {
-          const res = await fetch('http://localhost:4000/api/pedidos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Error creando pedido en servidor');
+        // limpiar carrito y UI
+        carrito = [];
+        localStorage.setItem('carrito', JSON.stringify([]));
+        if (typeof actualizarCarrito === 'function') actualizarCarrito();
 
-          // guardar en localStorage para UI local (opcional)
-          const pedidoLocal = {
-            id: data.id_pedido || ('local_' + Date.now()),
-            cliente: logged || 'invitado',
-            productos: carrito,
-            total,
-            fecha: new Date().toISOString(),
-            direccion,
-            estado: 'pendiente',
-            metodo: 'efectivo'
-          };
-          const pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
-          const email = logged || 'invitado';
-          pedidosPorUsuario[email] = pedidosPorUsuario[email] || [];
-          pedidosPorUsuario[email].push(pedidoLocal);
-          localStorage.setItem('pedidosPorUsuario', JSON.stringify(pedidosPorUsuario));
-          const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-          pedidosGlobales.push(pedidoLocal);
-          localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
-
-          // limpiar carrito y UI
-          carrito = [];
-          localStorage.setItem('carrito', JSON.stringify([]));
-          if (typeof actualizarCarrito === 'function') actualizarCarrito();
-
-          alert('Pedido confirmado en el servidor. ID: ' + (data.id_pedido || 'n/a'));
-          bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).hide();
-          document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-          document.body.classList.remove('modal-open');
-        } catch (err) {
-          console.error('Error al enviar pedido:', err);
-          alert('No fue posible crear el pedido en el servidor. Intenta de nuevo.');
-        }
+        alert('Pedido confirmado. Pagarás en efectivo al recibirlo.');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).hide();
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
       });
     })();
     document.addEventListener('DOMContentLoaded', function () {
@@ -1487,7 +1446,6 @@
           { id: 'h13', nombre: 'Hawaiian Burger', precio: 16900, img: 'images/Ham_Hawaii.png', descripcion: 'Piña asada, jamón y salsa teriyaki.', tienda: 'Oliva Pizza Garden' },
           { id: 'h14', nombre: 'Truffle Burger', precio: 21900, img: 'images/Ham_Trufa.png', descripcion: 'Queso gouda y mayonesa de trufa negra.', tienda: 'La Burger' },
           { id: 'h15', nombre: 'Egg & Cheese Burger', precio: 17900, img: 'images/Ham_Egg.png', descripcion: 'Huevo frito, queso cheddar y tocino.', tienda: 'Smash Burger' },
-          { id: 'h16', nombre: 'Mediterranean Burger', precio:   18900, img: 'images/Ham_Med.png', descripcion: 'Queso feta, aceitunas negras y salsa tzatziki.', tienda: 'Oliva Pizza Garden' },
           { id: 'h17', nombre: 'Smoky Burger', precio: 19900, img: 'images/Ham_Smoke.png', descripcion: 'Sabor ahumado con salsa BBQ artesanal.', tienda: 'Drive Pizza' },
           { id: 'h18', nombre: 'Crispy Onion Burger', precio: 17900, img: 'images/Ham_Onion.png', descripcion: 'Crujientes aros de cebolla y queso americano.', tienda: 'La Burger' },
           { id: 'h19', nombre: 'Buffalo Chicken Burger', precio: 16900, img: 'images/Ham_Buffalo.png', descripcion: 'Pollo en salsa buffalo con aderezo ranch.', tienda: 'ATA Burger' },
@@ -1540,79 +1498,67 @@
         ]
       };
 
-      // Nuevo: obtiene productos desde el backend
-  async function fetchProductos(categoria) {
-    try {
-      const base = 'http://localhost:4000/api/productos';
-      const url = categoria ? `${base}?categoria=${encodeURIComponent(categoria)}` : base;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error('Error al obtener productos');
-      return await r.json();
-    } catch (e) {
-      console.error('fetchProductos:', e);
-      return [];
-    }
-  }
+      function renderProductos(categoria) {
+        const grid = document.getElementById('productosGrid');
+        const title = document.getElementById('productosTitle');
+        if (!grid || !title) return;
 
-  async function renderProductos(categoria) {
-    const grid = document.getElementById('productosGrid');
-    const title = document.getElementById('productosTitle');
-    if (!grid || !title) return;
+        const lista = productosCatalogo[categoria] || [];
+        title.textContent = categoria.charAt(0).toUpperCase() + categoria.slice(1);
 
-    const lista = await fetchProductos(categoria);
-    title.textContent = categoria.charAt(0).toUpperCase() + categoria.slice(1);
-    grid.innerHTML = '';
-    if (!lista.length) { grid.innerHTML = '<p class="text-muted">No hay productos para esta categoría.</p>'; return; }
+        grid.innerHTML = '';
 
-    lista.forEach(p => {
-      const col = document.createElement('div');
-      col.className = 'col-sm-6 col-md-4';
-      col.innerHTML = `
+        if (lista.length === 0) {
+          grid.innerHTML = '<p class="text-muted">No hay productos para esta categoría.</p>';
+          return;
+        }
+
+        lista.forEach(p => {
+          const col = document.createElement('div');
+          col.className = 'col-sm-6 col-md-4';
+          col.innerHTML = `
         <div class="card h-100 shadow-sm">
-          <img src="${p.img || p.imagen || 'images/default.png'}" class="card-img-top" alt="${p.nombre || p.nom_producto}" style="height:180px; object-fit:cover;">
+          <img src="${p.img}" class="card-img-top" alt="${p.nombre}" style="height:180px; object-fit:cover;">
           <div class="card-body d-flex flex-column">
-            <h5 class="card-title">${p.nombre || p.nom_producto}</h5>
-            <p class="card-text text-muted small">${p.descripcion || p.descripcion || ''}</p>
+            <h5 class="card-title">${p.nombre}</h5>
+            <p class="card-text text-muted small">${p.descripcion}</p>
             <div class="mt-auto d-flex justify-content-between align-items-center">
-              <strong>$${Number(p.precio || p.precio).toLocaleString()}</strong>
-              <button class="btn btn-outline-danger btn-sm agregar-carrito-por-id"
-                data-id="${p.id || p.id_producto}"
-                data-nombre="${(p.nombre || p.nom_producto).replace(/"/g,'')}"
-                data-precio="${p.precio || p.precio}"
-                data-tienda-id="${p.id_tienda || ''}"
-                data-tienda="${p.tienda || ''}">
-                Agregar
-              </button>
+              <strong>$${p.precio.toLocaleString()}</strong>
+<button class="btn btn-outline-danger btn-sm agregar-carrito-por-id"
+        data-id="${p.id}"
+        data-nombre="${p.nombre}"
+        data-precio="${p.precio}"
+        data-tienda="${p.tienda}">
+  Agregar
+</button>
             </div>
           </div>
         </div>
       `;
-      grid.appendChild(col);
-    });
+          grid.appendChild(col);
+        });
 
-    document.getElementById('productosSection').style.display = 'block';
-    document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('productosSection').style.display = 'block';
+        document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth' });
 
-    // listeners para botones agregados dinámicamente
-    document.querySelectorAll('.agregar-carrito-por-id').forEach(btn => {
-      btn.addEventListener('click', function () {
-        const id = this.dataset.id || null;
-        const nombre = this.dataset.nombre;
-        const precio = Number(this.dataset.precio) || 0;
-        const tienda = this.dataset.tienda || 'sin_tienda';
-        const tiendaId = this.dataset.tiendaId || null; // ideal: productos devuelven id_tienda
+        // listeners para botones agregados dinámicamente
+        document.querySelectorAll('.agregar-carrito-por-id').forEach(btn => {
+          btn.addEventListener('click', function () {
+            const nombre = this.dataset.nombre;
+            const precio = parseInt(this.dataset.precio) || 0;
+            const tienda = this.dataset.tienda || "sin_tienda";
+            carrito.push({ nombre, precio, tienda });
 
-        // guardar id_producto y precio unitario (precio_uni)
-        carrito.push({ id_producto: id, nombre, precio, precio_uni: precio, cantidad: 1, tienda, id_tienda: tiendaId });
-        localStorage.setItem('carrito', JSON.stringify(carrito));
-        if (typeof actualizarCarrito === 'function') actualizarCarrito();
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            if (typeof actualizarCarrito === 'function') actualizarCarrito();
 
-        const original = this.innerHTML;
-        this.innerHTML = 'Agregado';
-        setTimeout(() => this.innerHTML = original, 900);
-      });
-    });
-  }
+            const original = this.innerHTML;
+            this.innerHTML = 'Agregado';
+            setTimeout(() => this.innerHTML = original, 900);
+          });
+        });
+
+      }
 
       // click en tarjetas de categoría
       document.querySelectorAll('.categoria-card').forEach(el => {
@@ -1673,10 +1619,8 @@
         const pedidos = _getPedidosGlobales();
         const pidx = pedidos.findIndex(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
         if (pidx === -1) return null;
-        pedidos[pidx].repartidorId = repartidorId;
-        pedidos[pidx].estado = 'asignado';
-        pedidos[pidx].historial = pedidos[pidx].historial || [];
-        pedidos[pidx].historial.push({ evento: 'asignado', repartidorId, at: new Date().toISOString() });
+        pedidos[pidx].repartidorId = repartidorId; pedidos[pidx].estado = 'asignado';
+        pedidos[pidx].historial = pedidos[pidx].historial || []; pedidos[pidx].historial.push({ evento: 'asignado', repartidorId, at: new Date().toISOString() });
         _savePedidosGlobales(pedidos);
         const cliente = pedidos[pidx].cliente || localStorage.getItem('loggedUser') || 'invitado';
         _savePedidoPorUsuario(cliente, pedidos[pidx]);
@@ -1697,23 +1641,43 @@
 
 
       window.updateOrderStatus = function (pedidoId, status, meta = {}) {
-        const pedidos = _getPedidosGlobales();
-        const p = pedidos.find(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
-        if (!p) return null;
-        p.estado = status; p.historial = p.historial || []; p.historial.push(Object.assign({ evento: status, at: new Date().toISOString() }, meta));
-        if (status === 'entregado') { p.entregadoEn = new Date().toISOString(); if (p.repartidorId) updateRepartidor(p.repartidorId, { disponible: true }); }
-        _savePedidosGlobales(pedidos); _savePedidoPorUsuario(p.cliente || localStorage.getItem('loggedUser') || 'invitado', p); renderPedidosRepartidor(); return p;
-      };
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const p = pedidos.find(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
+  if (!p) {
+    console.warn(`Pedido ${pedidoId} no encontrado`);
+    return null;
+  }
+  p.estado = status;
+  p.historial = p.historial || [];
+  p.historial.push(Object.assign({ evento: status, at: new Date().toISOString() }, meta));
 
+  if (status === 'entregado') {
+    const ahora = new Date().toISOString();
+    p.entregadoEn = ahora;
+    p.fechaEntrega = ahora;
 
-      window.repartidorConfirmDelivery = function (pedidoId, repartidorId) { return updateOrderStatus(pedidoId, 'entregado', { repartidorId }); };
-      window.listPedidosPorRepartidor = function (repartidorId) { return _getPedidosGlobales().filter(p => p.repartidorId === repartidorId); };
+    if (p.repartidorId) {
+      // actualizar estado del repartidor a disponible
+      // Asume que tienes función updateRepartidor para esto
+      updateRepartidor(p.repartidorId, { disponible: true });
+    }
+  }
 
+  localStorage.setItem('pedidosGlobales', JSON.stringify(pedidos));
 
-      if (getRepartidores().length === 0) {
-        createRepartidor({ id: 'r_juan', nombre: 'Juan Pérez', telefono: '+573001112223', disponible: true });
-        createRepartidor({ id: 'r_maria', nombre: 'María Gomez', telefono: '+573004445556', disponible: true });
-      }
+  // Si guardas pedidos por usuario también, actualiza localStorage aquí
+  const porUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
+  const cliente = p.cliente || localStorage.getItem('loggedUser') || 'invitado';
+  porUsuario[cliente] = porUsuario[cliente] || [];
+  const idx = porUsuario[cliente].findIndex(x => x.id === p.id);
+  if (idx >= 0) porUsuario[cliente][idx] = p; else porUsuario[cliente].push(p);
+  localStorage.setItem('pedidosPorUsuario', JSON.stringify(porUsuario));
+
+  // Actualiza la interfaz de repartidor si corresponde
+  if (typeof renderPedidosRepartidor === 'function') renderPedidosRepartidor();
+
+  return p;
+};
 
 
       function renderPedidosRepartidor() {
@@ -1721,9 +1685,12 @@
         if (!list) return;
 
         const logged = localStorage.getItem('loggedUser');
-        const users = JSON.parse(localStorage.getItem('users') || '{}');
-        const user = users[logged] || {};
-        const repartidorId = user.repartidorId || logged || '';
+const users = JSON.parse(localStorage.getItem('users') || '{}');
+const user = users[logged];
+const repartidorId = user ? user.repartidorId : null;
+
+console.log('Usuario repartidor logueado:', repartidorId);
+
 
         // Filtrar: pedidos pendientes (para aceptar) + pedidos asignados al repartidor
         const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]')
@@ -1739,18 +1706,21 @@
           const idKey = p.id || p.paypalOrderId;
           let acciones = '';
 
-          // Botones según estado
           if (p.estado === 'pendiente' || p.estado === 'pagado') {
             acciones += `<button class="btn btn-sm btn-success me-1"
-        onclick="repartidorAcceptOrder('${idKey}', '${repartidorId}')">Aceptar</button>`;
+    onclick="repartidorAcceptOrder('${idKey}', '${repartidorId}')">Aceptar</button>`;
+            acciones += `<button class="btn btn-sm btn-danger"
+    onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
           }
+
           if (p.estado === 'aceptado' || p.estado === 'asignado') {
             acciones += `<button class="btn btn-sm btn-warning me-1"
         onclick="updateOrderStatus('${idKey}','en_ruta',{repartidorId:'${repartidorId}'})">En ruta</button>`;
           }
           if (p.estado === 'en_ruta') {
-            acciones += `<button class="btn btn-sm btn-danger"
-        onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
+           acciones += `<button class="btn btn-sm btn-danger"
+  onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
+
           }
 
           const el = document.createElement('div');
@@ -1774,6 +1744,7 @@
       // Refrescar al abrir el modal
       document.getElementById('repartidorModal')
         ?.addEventListener('show.bs.modal', renderPedidosRepartidor);
+        
 
     })();
   </script>
@@ -1926,9 +1897,7 @@
             // Aquí obtienes los datos reales del carrito
             const tiendaSeleccionada = "Pizza Garden"; // puedes cambiar según el contexto
             const cliente = localStorage.getItem("loggedUser"); // correo del usuario logueado
-            // Reemplazar parseInt(...) que lee "$..." por parseFloat limpiando símbolos
-const totalCarritoText = document.getElementById("carritoTotal").textContent || "";
-const totalCarrito = parseFloat(totalCarritoText.replace(/[^0-9.-]+/g, "")) || 0;
+            const totalCarrito = parseInt(document.getElementById("carritoTotal").textContent) || 0;
 
             if (!cliente) {
               alert("Debes iniciar sesión para finalizar la compra.");
@@ -1946,20 +1915,7 @@ const totalCarrito = parseFloat(totalCarritoText.replace(/[^0-9.-]+/g, "")) || 0
 
     });
 
-    // Cantidad de pedidos entregados por repartidor
-    function calcularPedidosPorRepartidor() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const resumen = {};
-      pedidos.forEach(p => {
-        if (p.repartidorId && p.estado === "entregado") {
-          if (!resumen[p.repartidorId]) {
-            resumen[p.repartidorId] = { repartidorId: p.repartidorId, total: 0 };
-          }
-          resumen[p.repartidorId].total += 1;
-        }
-      });
-      return Object.values(resumen);
-    }
+    
 
     // Historial de pedidos por repartidor
     function historialPedidosRepartidor(repartidorId) {
@@ -1987,170 +1943,270 @@ const totalCarrito = parseFloat(totalCarritoText.replace(/[^0-9.-]+/g, "")) || 0
           tiempos[clave].cantidad += 1;
         }
       });
-      return Object.values(tiempos).map(t => ({
-        repartidorId: t.repartidorId,
-        anio: t.anio,
-        mes: t.mes,
-        promedio: (t.suma / t.cantidad).toFixed(1)
-      }));
+     return Object.values(tiempos).map(t => ({
+    repartidorId: t.repartidorId,
+    anio: t.anio,
+    mes: t.mes,
+    entregas: t.cantidad,
+    promedio: (t.suma / t.cantidad).toFixed(1)
+  }));
+}
+// Funciones para reportes de repartidores
+
+// Calcular pedidos entregados por repartidor
+function calcularPedidosPorRepartidor() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const conteo = {};
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado") {
+      if (!conteo[p.repartidorId]) conteo[p.repartidorId] = 0;
+      conteo[p.repartidorId]++;
     }
+  });
+  return Object.entries(conteo).map(([repartidorId, total]) => ({ repartidorId, total }));
+}
 
-    // Mostrar reportes de repartidores
-    function mostrarReporteRepartidores() {
-      const resumen = calcularPedidosPorRepartidor();
-      const tiempos = calcularTiempoPromedioEntrega();
+// Historial de pedidos por repartidor
+function historialPedidosRepartidor(repartidorId) {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  return pedidos.filter(p => p.repartidorId === repartidorId);
+}
 
-      // Tabla de repartidores
-      let htmlRep = `<table class="table table-striped"><thead><tr><th>Repartidor</th><th>Entregas</th></tr></thead><tbody>`;
-      resumen.forEach(r => {
-        htmlRep += `<tr><td>${r.repartidorId}</td><td>${r.total}</td></tr>`;
+// Tiempo promedio de entrega por repartidor (agrupado por mes)
+function calcularTiempoPromedioEntrega() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const tiempos = {};
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado" && p.fechaEntrega) {
+      const inicio = new Date(p.fecha);
+      const fin = new Date(p.fechaEntrega);
+      const minutos = Math.round((fin - inicio) / 60000);
+      const fecha = new Date(p.fecha);
+      const mes = fecha.getMonth() + 1;
+      const anio = fecha.getFullYear();
+      const clave = `${p.repartidorId}-${anio}-${mes}`;
+      if (!tiempos[clave]) {
+        tiempos[clave] = { repartidorId: p.repartidorId, anio, mes, suma: 0, cantidad: 0 };
+      }
+      tiempos[clave].suma += minutos;
+      tiempos[clave].cantidad += 1;
+    }
+  });
+  return Object.values(tiempos).map(t => ({
+    repartidorId: t.repartidorId,
+    anio: t.anio,
+    mes: t.mes,
+    entregas: t.cantidad,
+    promedio: (t.suma / t.cantidad).toFixed(1)
+  }));
+}
+
+// Funciones para reportes de productos y pedidos
+
+// Productos más vendidos por categoría
+function productosMasVendidosPorCategoria() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const categorias = {};
+
+  pedidos.forEach(p => {
+    (p.productos || []).forEach(prod => {
+      const cat = prod.categoria || "sin_categoria";
+      if (!categorias[cat]) categorias[cat] = {};
+      if (!categorias[cat][prod.nombre]) categorias[cat][prod.nombre] = 0;
+      categorias[cat][prod.nombre] += prod.cantidad || 1;
+    });
+  });
+
+  // Convertir a array ordenado por cantidad
+  const resultado = {};
+  for (const cat in categorias) {
+    resultado[cat] = Object.entries(categorias[cat])
+      .sort((a, b) => b[1] - a[1]);
+  }
+  return resultado;
+}
+
+// Resumen de productos en Noviembre 2025 agrupados por tienda
+function resumenNoviembre2025PorTienda() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const resumen = {};
+
+  pedidos.forEach(p => {
+    const fecha = new Date(p.fecha);
+    if (fecha.getMonth() === 10 && fecha.getFullYear() === 2025) { // noviembre = mes 10 (0-indexed)
+      const tienda = p.tienda || "sin_tienda";
+      if (!resumen[tienda]) resumen[tienda] = { productos: {}, total: 0 };
+
+      (p.productos || []).forEach(prod => {
+        if (!resumen[tienda].productos[prod.nombre]) resumen[tienda].productos[prod.nombre] = 0;
+        resumen[tienda].productos[prod.nombre] += prod.cantidad || 1;
       });
-      htmlRep += `</tbody></table>`;
-      const tablaRep = document.getElementById('tablaRepartidores');
-      if (tablaRep) tablaRep.innerHTML = htmlRep;
+      resumen[tienda].total += p.total || 0;
+    }
+  });
 
-      // Historial del repartidor actual
-      const logged = localStorage.getItem('loggedUser');
-      const users = JSON.parse(localStorage.getItem('users') || '{}');
-      const user = users[logged];
-      const repIdActual = user && user.repartidorId;
-      let htmlHist = "";
-      if (repIdActual) {
-        const hist = historialPedidosRepartidor(repIdActual);
-        htmlHist = `<h6>Historial de ${repIdActual}</h6><ul class="list-group">`;
-        hist.forEach(p => {
-          htmlHist += `<li class="list-group-item">${p.fecha || ''} — ${p.cliente || ''} — ${p.estado}</li>`;
+  return resumen;
+}
+
+// Pedidos no entregados en más de 45 minutos
+function pedidosFueraDeTiempo() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const retrasados = [];
+
+  pedidos.forEach(p => {
+    if (p.estado !== "entregado") return;
+    if (!p.fecha || !p.fechaEntrega) return;
+
+    const inicio = new Date(p.fecha);
+    const fin = new Date(p.fechaEntrega);
+    const minutos = (fin - inicio) / 60000;
+
+    if (minutos > 45) {
+      retrasados.push({
+        tienda: p.tienda || "sin_tienda",
+        repartidor: p.repartidorId || "sin_repartidor",
+        cliente: p.cliente || "invitado",
+        minutos
+      });
+    }
+  });
+
+  return retrasados;
+}
+
+// Función para mostrar reportes de repartidores
+function mostrarReporteRepartidores() {
+   const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+   console.log('Pedidos en localStorage:', pedidos);
+   
+  // Conteo de entregas por repartidor
+  const entregasPorRepartidor = {};
+  pedidos.forEach(p => {
+    if(p.repartidorId && p.estado === 'entregado'){
+      entregasPorRepartidor[p.repartidorId] = (entregasPorRepartidor[p.repartidorId] || 0) + 1;
+    }
+  });
+
+  // Render tabla repartidores
+  const tablaRepDiv = document.getElementById('tablaRepartidores');
+  if(tablaRepDiv){
+    let html = '<table class="table table-striped"><thead><tr><th>Repartidor</th><th>Entregas</th></tr></thead><tbody>';
+    if(Object.keys(entregasPorRepartidor).length === 0){
+      html += `<tr><td colspan="2">No hay entregas registradas.</td></tr>`;
+    } else {
+      for(const [rep, cant] of Object.entries(entregasPorRepartidor)){
+        html += `<tr><td>${rep}</td><td>${cant}</td></tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    tablaRepDiv.innerHTML = html;
+  }
+
+  // Render historial repartidores
+  const tablaHistDiv = document.getElementById('tablaHistorialRepartidor');
+  if(tablaHistDiv){
+    let html = '<h6>Historial de Pedidos por Repartidor</h6>';
+    const repartidores = Object.keys(entregasPorRepartidor);
+    if(repartidores.length === 0){
+      html += '<p>No hay historial disponible.</p>';
+    } else {
+      repartidores.forEach(rep => {
+        html += `<h6>${rep}</h6><ul class="list-group">`;
+        const pedidosRep = pedidos.filter(p => p.repartidorId === rep);
+        pedidosRep.forEach(p => {
+          html += `<li class="list-group-item">${p.fecha || ''} — Cliente: ${p.cliente || ''} — Estado: ${p.estado || ''}</li>`;
         });
-        htmlHist += `</ul>`;
+        html += '</ul>';
+      });
+    }
+    tablaHistDiv.innerHTML = html;
+  }
+
+  // Calcular y mostrar tiempo promedio entrega por repartidor y por mes
+  const tiempos = {};
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado" && p.fecha && p.fechaEntrega) {
+      const inicio = new Date(p.fecha);
+      const fin = new Date(p.fechaEntrega);
+      const minutos = Math.round((fin - inicio) / 60000);
+      const fecha = new Date(p.fecha);
+      const mes = fecha.getMonth() + 1;
+      const anio = fecha.getFullYear();
+      const clave = `${p.repartidorId}-${anio}-${mes}`;
+      if (!tiempos[clave]) {
+        tiempos[clave] = { repartidorId: p.repartidorId, anio, mes, suma: 0, cantidad: 0 };
       }
-      const tablaHist = document.getElementById('tablaHistorialRepartidor');
-      if (tablaHist) tablaHist.innerHTML = htmlHist;
+      tiempos[clave].suma += minutos;
+      tiempos[clave].cantidad += 1;
+    }
+  });
 
-      // Tiempo promedio
-      let htmlTime = `<table class="table"><thead><tr><th>Repartidor</th><th>Año</th><th>Mes</th><th>Promedio (min)</th></tr></thead><tbody>`;
-      tiempos.forEach(t => {
-        htmlTime += `<tr><td>${t.repartidorId}</td><td>${t.anio}</td><td>${t.mes}</td><td>${t.promedio}</td></tr>`;
+  const tablaTiempoDiv = document.getElementById('tablaTiempoEntrega');
+  if(tablaTiempoDiv){
+    let html = '<table class="table"><thead><tr><th>Repartidor</th><th>Año</th><th>Mes</th><th>Entregas</th><th>Promedio (min)</th></tr></thead><tbody>';
+    const keys = Object.keys(tiempos);
+    if(keys.length === 0){
+      html += `<tr><td colspan="5">No hay datos de tiempo de entrega.</td></tr>`;
+    } else {
+      keys.forEach(k => {
+        const t = tiempos[k];
+        const promedio = (t.suma / t.cantidad).toFixed(1);
+        html += `<tr><td>${t.repartidorId}</td><td>${t.anio}</td><td>${t.mes}</td><td>${t.cantidad}</td><td>${promedio}</td></tr>`;
       });
-      htmlTime += `</tbody></table>`;
-      const tablaTiempo = document.getElementById('tablaTiempoEntrega');
-      if (tablaTiempo) tablaTiempo.innerHTML = htmlTime;
     }
+    html += '</tbody></table>';
+    tablaTiempoDiv.innerHTML = html;
+  }
+}
 
-    // Listener al modal de reportes de repartidores
-    const reportesModal = document.getElementById('reportesModal');
-    if (reportesModal) {
-      reportesModal.addEventListener('shown.bs.modal', mostrarReporteRepartidores);
+
+// Función para mostrar reportes de productos y pedidos
+function mostrarReporteProductosPedidos() {
+  // 1. Productos más vendidos por categoría
+  const vendidos = productosMasVendidosPorCategoria();
+  let htmlVendidos = "";
+  for (const cat in vendidos) {
+    htmlVendidos += `<h6>${cat}</h6><ul>`;
+    vendidos[cat].forEach(([prod, cant]) => {
+      htmlVendidos += `<li>${prod}: ${cant} unidades</li>`;
+    });
+    htmlVendidos += `</ul>`;
+  }
+  document.getElementById('tablaProductosVendidos').innerHTML = htmlVendidos;
+
+  // 2. Resumen Noviembre 2025 por tienda
+  const resumen = resumenNoviembre2025PorTienda();
+  let htmlResumen = "";
+  for (const tienda in resumen) {
+    htmlResumen += `<h6>${tienda}</h6><ul>`;
+    for (const prod in resumen[tienda].productos) {
+      htmlResumen += `<li>${prod}: ${resumen[tienda].productos[prod]} unidades</li>`;
     }
-    // Productos más vendidos por categoría
-    function productosMasVendidosPorCategoria() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const categorias = {};
+    htmlResumen += `<li><strong>Total $${resumen[tienda].total.toLocaleString()}</strong></li>`;
+    htmlResumen += `</ul>`;
+  }
+  document.getElementById('tablaResumenNoviembre').innerHTML = htmlResumen;
 
-      pedidos.forEach(p => {
-        (p.productos || []).forEach(prod => {
-          const cat = prod.categoria || "sin_categoria";
-          if (!categorias[cat]) categorias[cat] = {};
-          if (!categorias[cat][prod.nombre]) categorias[cat][prod.nombre] = 0;
-          categorias[cat][prod.nombre] += prod.cantidad || 1;
-        });
-      });
+  // 3. Pedidos fuera de tiempo (>45 min)
+  const retrasados = pedidosFueraDeTiempo();
+  let htmlRetrasados = `<table class="table"><thead><tr><th>Tienda</th><th>Repartidor</th><th>Cliente</th><th>Minutos</th></tr></thead><tbody>`;
+  retrasados.forEach(r => {
+    htmlRetrasados += `<tr><td>${r.tienda}</td><td>${r.repartidor}</td><td>${r.cliente}</td><td>${r.minutos.toFixed(1)}</td></tr>`;
+  });
+  htmlRetrasados += `</tbody></table>`;
+  document.getElementById('tablaPedidosFueraTiempo').innerHTML = htmlRetrasados;
+}
 
-      // Convertir a array ordenado por cantidad
-      const resultado = {};
-      for (const cat in categorias) {
-        resultado[cat] = Object.entries(categorias[cat])
-          .sort((a, b) => b[1] - a[1]);
-      }
-      return resultado;
-    }
-
-    // Resumen de productos en septiembre 2025 agrupados por tienda
-    function resumenSeptiembre2025PorTienda() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const resumen = {};
-
-      pedidos.forEach(p => {
-        const fecha = new Date(p.fecha);
-        if (fecha.getMonth() === 10 && fecha.getFullYear() === 2025) { // septiembre = mes 8
-          const tienda = p.tienda || "sin_tienda";
-          if (!resumen[tienda]) resumen[tienda] = { productos: {}, total: 0 };
-
-          (p.productos || []).forEach(prod => {
-            if (!resumen[tienda].productos[prod.nombre]) resumen[tienda].productos[prod.nombre] = 0;
-            resumen[tienda].productos[prod.nombre] += prod.cantidad || 1;
-          });
-          resumen[tienda].total += p.total || 0;
-        }
-      });
-
-      return resumen;
-    }
-
-    // Pedidos no entregados en más de 45 minutos
-    function pedidosFueraDeTiempo() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const retrasados = [];
-
-      pedidos.forEach(p => {
-        if (p.estado !== "entregado") return;
-        if (!p.fecha || !p.fechaEntrega) return;
-
-        const inicio = new Date(p.fecha);
-        const fin = new Date(p.fechaEntrega);
-        const minutos = (fin - inicio) / 60000;
-
-        if (minutos > 45) {
-          retrasados.push({
-            tienda: p.tienda || "sin_tienda",
-            repartidor: p.repartidorId || "sin_repartidor",
-            cliente: p.cliente || "invitado",
-            minutos
-          });
-        }
-      });
-
-      return retrasados;
-    }
-
-    // Renderizar en el modal de reportes
-    function mostrarReporteProductosPedidos() {
-      // 1. Productos más vendidos por categoría
-      const vendidos = productosMasVendidosPorCategoria();
-      let htmlVendidos = "";
-      for (const cat in vendidos) {
-        htmlVendidos += `<h6>${cat}</h6><ul>`;
-        vendidos[cat].forEach(([prod, cant]) => {
-          htmlVendidos += `<li>${prod}: ${cant} unidades</li>`;
-        });
-        htmlVendidos += `</ul>`;
-      }
-      document.getElementById('tablaProductosVendidos').innerHTML = htmlVendidos;
-
-      // 2. Resumen noviembre 2025 por tienda
-      const resumen = resumenNoviembre2025PorTienda();
-      let htmlResumen = "";
-      for (const tienda in resumen) {
-        htmlResumen += `<h6>${tienda}</h6><ul>`;
-        for (const prod in resumen[tienda].productos) {
-          htmlResumen += `<li>${prod}: ${resumen[tienda].productos[prod]} unidades</li>`;
-        }
-        htmlResumen += `<li><strong>Total $${resumen[tienda].total.toLocaleString()}</strong></li>`;
-        htmlResumen += `</ul>`;
-      }
-      document.getElementById('tablaResumenNoviembre').innerHTML = htmlResumen;
-
-      // 3. Pedidos fuera de tiempo (>45 min)
-      const retrasados = pedidosFueraDeTiempo();
-      let htmlRetrasados = `<table class="table"><thead><tr><th>Tienda</th><th>Repartidor</th><th>Cliente</th><th>Minutos</th></tr></thead><tbody>`;
-      retrasados.forEach(r => {
-        htmlRetrasados += `<tr><td>${r.tienda}</td><td>${r.repartidor}</td><td>${r.cliente}</td><td>${r.minutos.toFixed(1)}</td></tr>`;
-      });
-      htmlRetrasados += `</tbody></table>`;
-      document.getElementById('tablaPedidosFueraTiempo').innerHTML = htmlRetrasados;
-    }
-
-
+// Listener al modal de reportes para cargar los reportes
+const reportesModal = document.getElementById('reportesModal');
+if (reportesModal) {
+  reportesModal.addEventListener('shown.bs.modal', function () {
+    mostrarReporteRepartidores();
+    mostrarReporteProductosPedidos();
+  });
+}
   </script>
 </body>
+  </html>
 
-</html>
+
