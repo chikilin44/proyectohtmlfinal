@@ -474,7 +474,8 @@
                 <p class="fw-bold mb-0">
                   La Burger <br>
                   📍<a href="https://www.google.com/maps/search/?api=1&query=Cra+26+%23+39+-+16,+El+Príncipe,+Tuluá"
-                    target="_blank" class="text-decoration-none text-dark">Cra 26 # 39 - 16 B / El Príncipe Tuluá</a><br>
+                    target="_blank" class="text-decoration-none text-dark">Cra 26 # 39 - 16 B / El Príncipe
+                    Tuluá</a><br>
                   <a href="https://www.instagram.com/laburger.col" target="_blank" class="text-decoration-none">
                     <i class="bi bi-instagram me-1" style="font-size:1.4rem; color:#E1306C;"></i>@laburger.col
                   </a>
@@ -533,8 +534,20 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"></script>
 
   <script>
-    // Guardar y verificar usuarios en localStorage
-    document.addEventListener('DOMContentLoaded', function () {
+    const API_BASE = 'http://localhost:4000/api';
+
+    function getAuthToken() { return localStorage.getItem('authToken'); }
+    function saveLocalProfile(email, profile) {
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      users[email] = Object.assign(users[email] || {}, profile);
+      localStorage.setItem('users', JSON.stringify(users));
+    }
+    function getLocalProfile(email) {
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      return users[email] || null;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
       const loginForm = document.getElementById('loginForm');
       const toggleRegisterBtn = document.getElementById('toggleRegisterBtn');
       const registerFields = document.getElementById('registerFields');
@@ -542,272 +555,98 @@
       const loginMessage = document.getElementById('loginMessage');
       let isRegister = false;
 
-      if (toggleRegisterBtn) {
-        toggleRegisterBtn.addEventListener('click', function () {
-          isRegister = !isRegister;
-          registerFields.style.display = isRegister ? 'block' : 'none';
-          loginBtn.textContent = isRegister ? 'Registrarse' : 'Iniciar sesión';
-          toggleRegisterBtn.textContent = isRegister ? 'Ya tengo cuenta' : 'Registrarse';
-          loginMessage.textContent = '';
-        });
-      }
-
-      if (loginForm) {
-        loginForm.addEventListener('submit', function (e) {
-          e.preventDefault();
-          const email = document.getElementById('loginEmail').value;
-          const password = document.getElementById('loginPassword').value;
-          const name = document.getElementById('registerName').value;
-          const role = document.getElementById('userRole').value; // 👈 capturamos el rol
-
-          let users = JSON.parse(localStorage.getItem('users') || '{}');
-
-          if (isRegister) {
-            if (!name) {
-              loginMessage.textContent = 'Por favor ingresa tu nombre.';
-              loginMessage.style.color = 'red';
-              return;
-            }
-            if (users[email]) {
-              loginMessage.textContent = 'El usuario ya está registrado.';
-              loginMessage.style.color = 'red';
-            } else {
-              // 👇 guardamos también el rol
-              users[email] = { password, name, role };
-
-              // Si es repartidor, asignamos un repartidorId
-              if (role === "repartidor") {
-                users[email].repartidorId = "r_" + email.split("@")[0];
-              }
-
-              localStorage.setItem('users', JSON.stringify(users));
-              loginMessage.textContent = '¡Registro exitoso! Ahora puedes iniciar sesión.';
-              loginMessage.style.color = 'green';
-              isRegister = false;
-              registerFields.style.display = 'none';
-              loginBtn.textContent = 'Iniciar sesión';
-              toggleRegisterBtn.textContent = 'Registrarse';
-            }
-          } else {
-            if (users[email] && users[email].password === password) {
-              loginMessage.textContent = `¡Bienvenido, ${users[email].name || 'usuario'}!`;
-              loginMessage.style.color = 'green';
-
-              // guardar sesión
-              localStorage.setItem('loggedUser', email);
-
-              // actualizar estado global/currentUser y texto del botón perfil inmediatamente
-              currentUser = users[email];
-              currentUser.email = email;
-              const profileBtn = document.getElementById('profileBtn');
-              if (profileBtn) profileBtn.innerHTML = `<i class="bi bi-person"></i> ${users[email].name || 'Mi Perfil'}`;
-
-              setTimeout(() => {
-                bootstrap.Modal.getOrCreateInstance(document.getElementById('loginModal')).hide();
-                // eliminar backdrops sobrantes por seguridad y quitar clase modal-open
-                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-                document.body.classList.remove('modal-open');
-
-                // 👇 control de acceso por rol
-                const repartidorBtn = document.getElementById('btnRepartidor');
-                const reportesBtn = document.getElementById('btnReportes');
-                if (users[email].role === "repartidor" && repartidorBtn) {
-                  repartidorBtn.style.display = "inline-block";
-                  const modal = new bootstrap.Modal(document.getElementById('repartidorModal'));
-                  modal.show();
-                } else if (repartidorBtn) {
-                  repartidorBtn.style.display = "none";
-                }
-                if (users[email].role === "admin" && reportesBtn) {
-                  reportesBtn.style.display = "inline-block";
-                } else if (reportesBtn) {
-                  reportesBtn.style.display = "none";
-                }
-              }, 1000);
-            } else {
-              loginMessage.textContent = 'Correo o contraseña incorrectos.';
-              loginMessage.style.color = 'red';
-            }
-          }
-        });
-      }
-
-
-      // Actualizar texto del botón de perfil si hay sesión activa
-      const logged = localStorage.getItem('loggedUser');
-      if (logged) {
-        const users = JSON.parse(localStorage.getItem('users') || '{}');
-        const user = users[logged];
-        if (user) {
-          const btn = document.getElementById('profileBtn');
-          if (btn) btn.innerHTML = `<i class="bi bi-person"></i> ${user.name || 'Mi Perfil'}`;
-        }
-      }
-    });
-
-    let currentUser = null;
-
-    function showProfileModal(user) {
-      // limpiar cualquier historial de pedidos previamente añadido para evitar duplicados
-      const modalBody = document.getElementById('profileModal').querySelector('.modal-body');
-      const existingPedidos = modalBody.querySelector('.profile-pedidos-container');
-      if (existingPedidos) existingPedidos.remove();
-
-      document.getElementById('profileName').textContent = user.name || '';
-      document.getElementById('profileEmail').textContent = user.email || '';
-
-      // Foto
-      const photo = user.photo || 'https://via.placeholder.com/90x90?text=Foto';
-      document.getElementById('profilePhoto').src = photo;
-
-      // Direcciones
-      const addresses = user.addresses || [];
-      const ul = document.getElementById('profileAddresses');
-      ul.innerHTML = '';
-      if (addresses.length === 0) {
-        ul.innerHTML = '<li class="list-group-item">No hay direcciones registradas.</li>';
-      } else {
-        addresses.forEach(addr => {
-          const li = document.createElement('li');
-          li.className = 'list-group-item';
-          li.textContent = addr;
-          ul.appendChild(li);
-        });
-      }
-
-      // 🧾 Historial de pedidos
-      const pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario')) || {};
-      const pedidos = pedidosPorUsuario[user.email] || [];
-
-      const pedidosContainer = document.createElement('div');
-      pedidosContainer.className = 'mt-4 profile-pedidos-container';
-      pedidosContainer.innerHTML = '<h6>🧾 Historial de pedidos</h6>';
-
-      if (pedidos.length === 0) {
-        pedidosContainer.innerHTML += '<p class="text-muted">No hay pedidos registrados.</p>';
-      } else {
-        const ulPedidos = document.createElement('ul');
-        ulPedidos.className = 'list-group';
-        pedidos.forEach(p => {
-          const li = document.createElement('li');
-          li.className = 'list-group-item';
-          li.innerHTML = `
-        <strong>${p.fecha}</strong><br>
-        Productos: ${p.productos.map(prod => prod.nombre).join(', ')}<br>
-        Total: $${p.total.toLocaleString()}<br>
-        Dirección: ${p.direccion}
-      `;
-          ulPedidos.appendChild(li);
-        });
-        pedidosContainer.appendChild(ulPedidos);
-      }
-
-      modalBody.appendChild(pedidosContainer);
-
-      // ➕ Mostrar rol y responsabilidades
-      const roleInfo = document.createElement('div');
-      roleInfo.className = "mt-3";
-
-      if (user.role === "repartidor") {
-        roleInfo.innerHTML = `
-      <h6>Rol: Repartidor 🚚</h6>
-      <p class="text-muted mb-1">ID de repartidor: ${user.repartidorId || 'No asignado'}</p>
-      <p class="text-muted mb-1">Responsabilidades: aceptar pedidos, actualizar estado y confirmar entregas.</p>
-    `;
-      } else if (user.role === "admin") {
-        roleInfo.innerHTML = `
-      <h6>Rol: Súper Administrador 🛠️</h6>
-      <p class="text-muted mb-1">Gestión integral de repartidores, tiendas, categorías y reportes.</p>
-    `;
-      } else {
-        roleInfo.innerHTML = `
-      <h6>Rol: Cliente 🛒</h6>
-      <p class="text-muted mb-1">Puede registrar datos y realizar pedidos.</p>
-    `;
-      }
-
-      modalBody.appendChild(roleInfo);
-
-      // Mostrar modal
-      bootstrap.Modal.getOrCreateInstance(document.getElementById('profileModal')).show();
-    }
-
-    document.getElementById("profileBtn").addEventListener("click", function () {
-      if (currentUser) {
-        showProfileModal(currentUser);
-      }
-    });
-
-    // Guardar foto de perfil
-    const photoInputEl = document.getElementById('photoInput');
-    if (photoInputEl) {
-      photoInputEl.addEventListener('change', function (e) {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = function (evt) {
-          document.getElementById('profilePhoto').src = evt.target.result;
-          // Guardar en localStorage
-          let users = JSON.parse(localStorage.getItem('users') || '{}');
-          if (currentUser && users[currentUser.email]) {
-            users[currentUser.email].photo = evt.target.result;
-            localStorage.setItem('users', JSON.stringify(users));
-          }
-        };
-        reader.readAsDataURL(file);
+      toggleRegisterBtn?.addEventListener('click', () => {
+        isRegister = !isRegister;
+        registerFields.style.display = isRegister ? 'block' : 'none';
+        loginBtn.textContent = isRegister ? 'Registrarse' : 'Iniciar sesión';
+        toggleRegisterBtn.textContent = isRegister ? 'Ya tengo cuenta' : 'Registrarse';
+        loginMessage.textContent = '';
       });
-    }
 
-    // Botón perfil: muestra login o perfil según sesión
-    const profileBtnEl = document.getElementById('profileBtn');
-    if (profileBtnEl) {
-      profileBtnEl.addEventListener('click', function (e) {
+      async function apiRegister(email, password, role, cedula) {
+        return fetch(`${API_BASE}/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, role, cedula })
+        });
+      }
+      async function apiLogin(email, password) {
+        return fetch(`${API_BASE}/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+      }
+
+      loginForm?.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const logged = localStorage.getItem('loggedUser');
-        if (logged) {
-          const users = JSON.parse(localStorage.getItem('users') || '{}');
-          const user = users[logged];
-          if (user) {
-            user.email = logged;
-            currentUser = user;
-            showProfileModal(user);
+        const email = document.getElementById('loginEmail').value.trim();
+        const password = document.getElementById('loginPassword').value;
+        const name = document.getElementById('registerName').value.trim();
+        const role = document.getElementById('userRole').value;
+        const cedula = document.getElementById('registerCedula')?.value || null;
+
+        if (!email || !password) {
+          loginMessage.textContent = 'Ingresa correo y contraseña.';
+          loginMessage.style.color = 'red';
+          return;
+        }
+
+        try {
+          if (isRegister) {
+            if (!name) { loginMessage.textContent = 'Ingresa tu nombre.'; loginMessage.style.color='red'; return; }
+            const res = await apiRegister(email, password, role, cedula);
+            const data = await res.json();
+            if (!res.ok) { loginMessage.textContent = data.error || 'Error registro'; loginMessage.style.color='red'; return; }
+            saveLocalProfile(email, { name: name || email.split('@')[0], role, addresses: [] });
+            loginMessage.textContent = 'Registro OK. Inicia sesión.'; loginMessage.style.color='green';
+            isRegister = false; registerFields.style.display = 'none'; loginBtn.textContent = 'Iniciar sesión'; toggleRegisterBtn.textContent = 'Registrarse';
             return;
           }
+
+          // login
+          const res = await apiLogin(email, password);
+          const data = await res.json();
+          if (!res.ok) { loginMessage.textContent = data.error || 'Credenciales inválidas'; loginMessage.style.color='red'; return; }
+
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('loggedUser', email);
+          // crear perfil local mínimo si no existe (nombre/rol/direcciones)
+          if (!getLocalProfile(email)) saveLocalProfile(email, { name: email.split('@')[0], role: 'cliente', addresses: [] });
+
+          const profile = getLocalProfile(email);
+          const profileBtn = document.getElementById('profileBtn');
+          if (profileBtn) profileBtn.innerHTML = `<i class="bi bi-person"></i> ${profile.name || 'Mi Perfil'}`;
+
+          // mostrar controles por rol
+          const repartidorBtn = document.getElementById('btnRepartidor');
+          const reportesBtn = document.getElementById('btnReportes');
+          if (profile.role === "repartidor" && repartidorBtn) repartidorBtn.style.display = "inline-block"; else if (repartidorBtn) repartidorBtn.style.display = "none";
+          if (profile.role === "admin" && reportesBtn) reportesBtn.style.display = "inline-block"; else if (reportesBtn) reportesBtn.style.display = "none";
+
+          loginMessage.textContent = `Bienvenido, ${profile.name || email}`; loginMessage.style.color = 'green';
+          setTimeout(() => {
+            const modalEl = document.getElementById('loginModal');
+            if (modalEl) bootstrap.Modal.getOrCreateInstance(modalEl).hide();
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+          }, 500);
+        } catch (err) {
+          console.error(err);
+          loginMessage.textContent = 'Error de conexión al servidor'; loginMessage.style.color='red';
         }
-        // Si no está logueado, muestra login (usar getOrCreateInstance)
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('loginModal')).show();
       });
-    }
 
-    // Cerrar sesión
-    const logoutBtnEl = document.getElementById('logoutBtn');
-    if (logoutBtnEl) {
-      logoutBtnEl.addEventListener('click', function () {
-        localStorage.removeItem('loggedUser');
-
-        // reset UI y estado local para permitir nuevo inicio de sesión
-        currentUser = null;
-        const profileBtn = document.getElementById('profileBtn');
-        if (profileBtn) profileBtn.innerHTML = `<i class="bi bi-person"></i> Mi Perfil`;
-
-        // limpiar modal de perfil para que no muestre datos viejos
-        const profileNameEl = document.getElementById('profileName');
-        const profileEmailEl = document.getElementById('profileEmail');
-        if (profileNameEl) profileNameEl.textContent = '';
-        if (profileEmailEl) profileEmailEl.textContent = '';
-        const profilePhotoEl = document.getElementById('profilePhoto');
-        if (profilePhotoEl) profilePhotoEl.src = 'https://via.placeholder.com/90x90?text=Foto';
-        const profileAddressesEl = document.getElementById('profileAddresses');
-        if (profileAddressesEl) profileAddressesEl.innerHTML = '';
-
-        bootstrap.Modal.getOrCreateInstance(document.getElementById('profileModal')).hide();
-        // limpieza por si queda backdrop
-        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-        document.body.classList.remove('modal-open');
-      });
-    }
-    // 
-
+      // Si ya hay sesión: actualizar UI
+      const logged = localStorage.getItem('loggedUser');
+      if (logged) {
+        const profile = getLocalProfile(logged) || { name: logged, role: 'cliente' };
+        const btn = document.getElementById('profileBtn');
+        if (btn) btn.innerHTML = `<i class="bi bi-person"></i> ${profile.name || 'Mi Perfil'}`;
+        if (profile.role === "repartidor") document.getElementById('btnRepartidor').style.display = "inline-block";
+        if (profile.role === "admin") document.getElementById('btnReportes').style.display = "inline-block";
+      }
+    });
   </script>
 
   <!-- Modal Carrito -->
@@ -825,9 +664,10 @@
           <div class="d-grid gap-2">
             <button class="btn btn-danger" id="confirmarPedidoBtn">Confirmar Pedido</button>
             <!-- Botón para confirmar sin pago (efectivo / contra entrega) -->
-            <button class="btn btn-secondary w-100">
+            <button class="btn btn-secondary w-100" id="confirmarSinPagoBtn">
               Confirmar sin pagar (Efectivo)
             </button>
+
 
             <!-- Contenedor para el botón de PayPal -->
             <div id="paypal-button-container" class="mt-2"></div>
@@ -1365,7 +1205,8 @@
     (function handleConfirmarSinPago() {
       const btn = document.getElementById('confirmarSinPagoBtn');
       if (!btn) return;
-      btn.addEventListener('click', async function () {
+      btn.addEventListener('click', function () {
+        // sincronizar carrito
         try { carrito = JSON.parse(localStorage.getItem('carrito') || '[]'); window.carrito = carrito; } catch (e) { carrito = []; window.carrito = carrito; }
         if (!Array.isArray(carrito) || carrito.length === 0) { alert('Tu carrito está vacío.'); return; }
 
@@ -1384,14 +1225,10 @@
         }
         if (!direccion || !direccion.trim()) { const t = document.getElementById('toastNoDireccion'); if (t) new bootstrap.Toast(t, { delay: 6000 }).show(); return; }
 
-        const total = carrito.reduce((s, i) => s + (Number(i.precio || i.precio_uni) || 0) * (i.cantidad || 1), 0);
+        // crear pedido local
+        const total = carrito.reduce((s, i) => s + (Number(i.precio) || 0), 0);
+        const tiendaSeleccionada = carrito.find(p => p.tienda)?.tienda || "sin_tienda";
 
-        // construir cuerpo según tu backend
-        const productosPayload = carrito.map(p => ({
-          id_producto: p.id_producto || p.id || null,
-          cantidad: p.cantidad || 1,
-          precio_uni: p.precio_uni || p.precio || p.precio_unitario || 0
-        }));
         const pedido = {
           id: 'local_' + Date.now(),
           productos: carrito,
@@ -1405,67 +1242,28 @@
           tienda: carrito.find(p => p.tienda)?.tienda || "sin_tienda"
         };
 
-        // identificar cliente (si tienes cedula asociada a usuario, úsala; si no, envía null y el backend podrá manejarlo)
-        const logged = localStorage.getItem('loggedUser');
-        let cedula_cliente = null;
-        if (logged) {
-          const users = JSON.parse(localStorage.getItem('users') || '{}');
-          const user = users[logged];
-          if (user && user.cedula) cedula_cliente = user.cedula; // si guardas cédula en el perfil
-        }
 
-        // id_tienda: si tus productos tienen id_tienda, toma el primero; sino enviar null
-        const id_tienda = carrito.find(p => p.id_tienda)?.id_tienda || null;
+        // guardar pedidos por usuario
+        const email = pedido.cliente;
+        const pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
+        pedidosPorUsuario[email] = pedidosPorUsuario[email] || [];
+        pedidosPorUsuario[email].push(pedido);
+        localStorage.setItem('pedidosPorUsuario', JSON.stringify(pedidosPorUsuario));
 
-        const payload = {
-          cedula_cliente,
-          id_tienda,
-          total,
-          productos: productosPayload
-        };
+        // guardar globales
+        const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+        pedidosGlobales.push(pedido);
+        localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
 
-        try {
-          const res = await fetch('http://localhost:4000/api/pedidos', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Error creando pedido en servidor');
+        // limpiar carrito y UI
+        carrito = [];
+        localStorage.setItem('carrito', JSON.stringify([]));
+        if (typeof actualizarCarrito === 'function') actualizarCarrito();
 
-          // guardar en localStorage para UI local (opcional)
-          const pedidoLocal = {
-            id: data.id_pedido || ('local_' + Date.now()),
-            cliente: logged || 'invitado',
-            productos: carrito,
-            total,
-            fecha: new Date().toISOString(),
-            direccion,
-            estado: 'pendiente',
-            metodo: 'efectivo'
-          };
-          const pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
-          const email = logged || 'invitado';
-          pedidosPorUsuario[email] = pedidosPorUsuario[email] || [];
-          pedidosPorUsuario[email].push(pedidoLocal);
-          localStorage.setItem('pedidosPorUsuario', JSON.stringify(pedidosPorUsuario));
-          const pedidosGlobales = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-          pedidosGlobales.push(pedidoLocal);
-          localStorage.setItem('pedidosGlobales', JSON.stringify(pedidosGlobales));
-
-          // limpiar carrito y UI
-          carrito = [];
-          localStorage.setItem('carrito', JSON.stringify([]));
-          if (typeof actualizarCarrito === 'function') actualizarCarrito();
-
-          alert('Pedido confirmado en el servidor. ID: ' + (data.id_pedido || 'n/a'));
-          bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).hide();
-          document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
-          document.body.classList.remove('modal-open');
-        } catch (err) {
-          console.error('Error al enviar pedido:', err);
-          alert('No fue posible crear el pedido en el servidor. Intenta de nuevo.');
-        }
+        alert('Pedido confirmado. Pagarás en efectivo al recibirlo.');
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('carritoModal')).hide();
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
       });
     })();
     document.addEventListener('DOMContentLoaded', function () {
@@ -1531,7 +1329,7 @@
           { id: 'b13', nombre: 'Chocolate Caliente', precio: 5200, img: 'images/Chocolate_Caliente.png', descripcion: 'Bebida espesa de cacao artesanal.' },
           { id: 'b14', nombre: 'Agua con Gas', precio: 2700, img: 'images/Agua_con_Gas.jpg', descripcion: 'Agua mineral gasificada.' },
           { id: 'b15', nombre: 'Limonada de Coco', precio: 5500, img: 'images/Limonada_de_Coco.jpg', descripcion: 'Limonada cremosa con coco natural.' },
-          { id: 'b16', nombre: 'Jugo de Mango', precio: 4900, img: 'images/Jugo_de_Mango.jpg', descripcion: 'Jugo natural de mango maduro.' },
+                   { id: 'b16', nombre: 'Jugo de Mango', precio: 4900, img: 'images/Jugo_de_Mango.jpg', descripcion: 'Jugo natural de mango maduro.' },
           { id: 'b17', nombre: 'Batido de Fresa', precio: 7400, img: 'images/Batido_de_Fresa.jpg', descripcion: 'Fresas frescas con leche fría.' },
           { id: 'b18', nombre: 'Té Verde Frío', precio: 4300, img: 'images/Té_Verde_Frío.jpg', descripcion: 'Té verde con toque de miel y limón.' },
           { id: 'b19', nombre: 'Mojito sin Alcohol', precio: 8700, img: 'images/Mojito_sin_Alcohol.jpg', descripcion: 'Menta fresca, limón y soda.' },
@@ -1540,79 +1338,67 @@
         ]
       };
 
-      // Nuevo: obtiene productos desde el backend
-  async function fetchProductos(categoria) {
-    try {
-      const base = 'http://localhost:4000/api/productos';
-      const url = categoria ? `${base}?categoria=${encodeURIComponent(categoria)}` : base;
-      const r = await fetch(url);
-      if (!r.ok) throw new Error('Error al obtener productos');
-      return await r.json();
-    } catch (e) {
-      console.error('fetchProductos:', e);
-      return [];
-    }
-  }
+      function renderProductos(categoria) {
+        const grid = document.getElementById('productosGrid');
+        const title = document.getElementById('productosTitle');
+        if (!grid || !title) return;
 
-  async function renderProductos(categoria) {
-    const grid = document.getElementById('productosGrid');
-    const title = document.getElementById('productosTitle');
-    if (!grid || !title) return;
+        const lista = productosCatalogo[categoria] || [];
+        title.textContent = categoria.charAt(0).toUpperCase() + categoria.slice(1);
 
-    const lista = await fetchProductos(categoria);
-    title.textContent = categoria.charAt(0).toUpperCase() + categoria.slice(1);
-    grid.innerHTML = '';
-    if (!lista.length) { grid.innerHTML = '<p class="text-muted">No hay productos para esta categoría.</p>'; return; }
+        grid.innerHTML = '';
 
-    lista.forEach(p => {
-      const col = document.createElement('div');
-      col.className = 'col-sm-6 col-md-4';
-      col.innerHTML = `
+        if (lista.length === 0) {
+          grid.innerHTML = '<p class="text-muted">No hay productos para esta categoría.</p>';
+          return;
+        }
+
+        lista.forEach(p => {
+          const col = document.createElement('div');
+          col.className = 'col-sm-6 col-md-4';
+          col.innerHTML = `
         <div class="card h-100 shadow-sm">
-          <img src="${p.img || p.imagen || 'images/default.png'}" class="card-img-top" alt="${p.nombre || p.nom_producto}" style="height:180px; object-fit:cover;">
+          <img src="${p.img}" class="card-img-top" alt="${p.nombre}" style="height:180px; object-fit:cover;">
           <div class="card-body d-flex flex-column">
-            <h5 class="card-title">${p.nombre || p.nom_producto}</h5>
-            <p class="card-text text-muted small">${p.descripcion || p.descripcion || ''}</p>
+            <h5 class="card-title">${p.nombre}</h5>
+            <p class="card-text text-muted small">${p.descripcion}</p>
             <div class="mt-auto d-flex justify-content-between align-items-center">
-              <strong>$${Number(p.precio || p.precio).toLocaleString()}</strong>
-              <button class="btn btn-outline-danger btn-sm agregar-carrito-por-id"
-                data-id="${p.id || p.id_producto}"
-                data-nombre="${(p.nombre || p.nom_producto).replace(/"/g,'')}"
-                data-precio="${p.precio || p.precio}"
-                data-tienda-id="${p.id_tienda || ''}"
-                data-tienda="${p.tienda || ''}">
-                Agregar
-              </button>
+              <strong>$${p.precio.toLocaleString()}</strong>
+<button class="btn btn-outline-danger btn-sm agregar-carrito-por-id"
+        data-id="${p.id}"
+        data-nombre="${p.nombre}"
+        data-precio="${p.precio}"
+        data-tienda="${p.tienda}">
+  Agregar
+</button>
             </div>
           </div>
         </div>
       `;
-      grid.appendChild(col);
-    });
+          grid.appendChild(col);
+        });
 
-    document.getElementById('productosSection').style.display = 'block';
-    document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth' });
+        document.getElementById('productosSection').style.display = 'block';
+        document.getElementById('productosSection').scrollIntoView({ behavior: 'smooth' });
 
-    // listeners para botones agregados dinámicamente
-    document.querySelectorAll('.agregar-carrito-por-id').forEach(btn => {
-      btn.addEventListener('click', function () {
-        const id = this.dataset.id || null;
-        const nombre = this.dataset.nombre;
-        const precio = Number(this.dataset.precio) || 0;
-        const tienda = this.dataset.tienda || 'sin_tienda';
-        const tiendaId = this.dataset.tiendaId || null; // ideal: productos devuelven id_tienda
+        // listeners para botones agregados dinámicamente
+        document.querySelectorAll('.agregar-carrito-por-id').forEach(btn => {
+          btn.addEventListener('click', function () {
+            const nombre = this.dataset.nombre;
+            const precio = parseInt(this.dataset.precio) || 0;
+            const tienda = this.dataset.tienda || "sin_tienda";
+            carrito.push({ nombre, precio, tienda });
 
-        // guardar id_producto y precio unitario (precio_uni)
-        carrito.push({ id_producto: id, nombre, precio, precio_uni: precio, cantidad: 1, tienda, id_tienda: tiendaId });
-        localStorage.setItem('carrito', JSON.stringify(carrito));
-        if (typeof actualizarCarrito === 'function') actualizarCarrito();
+            localStorage.setItem('carrito', JSON.stringify(carrito));
+            if (typeof actualizarCarrito === 'function') actualizarCarrito();
 
-        const original = this.innerHTML;
-        this.innerHTML = 'Agregado';
-        setTimeout(() => this.innerHTML = original, 900);
-      });
-    });
-  }
+            const original = this.innerHTML;
+            this.innerHTML = 'Agregado';
+            setTimeout(() => this.innerHTML = original, 900);
+          });
+        });
+
+      }
 
       // click en tarjetas de categoría
       document.querySelectorAll('.categoria-card').forEach(el => {
@@ -1673,10 +1459,8 @@
         const pedidos = _getPedidosGlobales();
         const pidx = pedidos.findIndex(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
         if (pidx === -1) return null;
-        pedidos[pidx].repartidorId = repartidorId;
-        pedidos[pidx].estado = 'asignado';
-        pedidos[pidx].historial = pedidos[pidx].historial || [];
-        pedidos[pidx].historial.push({ evento: 'asignado', repartidorId, at: new Date().toISOString() });
+        pedidos[pidx].repartidorId = repartidorId; pedidos[pidx].estado = 'asignado';
+        pedidos[pidx].historial = pedidos[pidx].historial || []; pedidos[pidx].historial.push({ evento: 'asignado', repartidorId, at: new Date().toISOString() });
         _savePedidosGlobales(pedidos);
         const cliente = pedidos[pidx].cliente || localStorage.getItem('loggedUser') || 'invitado';
         _savePedidoPorUsuario(cliente, pedidos[pidx]);
@@ -1697,23 +1481,43 @@
 
 
       window.updateOrderStatus = function (pedidoId, status, meta = {}) {
-        const pedidos = _getPedidosGlobales();
-        const p = pedidos.find(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
-        if (!p) return null;
-        p.estado = status; p.historial = p.historial || []; p.historial.push(Object.assign({ evento: status, at: new Date().toISOString() }, meta));
-        if (status === 'entregado') { p.entregadoEn = new Date().toISOString(); if (p.repartidorId) updateRepartidor(p.repartidorId, { disponible: true }); }
-        _savePedidosGlobales(pedidos); _savePedidoPorUsuario(p.cliente || localStorage.getItem('loggedUser') || 'invitado', p); renderPedidosRepartidor(); return p;
-      };
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const p = pedidos.find(p => p.id === pedidoId || p.paypalOrderId === pedidoId);
+  if (!p) {
+    console.warn(`Pedido ${pedidoId} no encontrado`);
+    return null;
+  }
+  p.estado = status;
+  p.historial = p.historial || [];
+  p.historial.push(Object.assign({ evento: status, at: new Date().toISOString() }, meta));
 
+  if (status === 'entregado') {
+    const ahora = new Date().toISOString();
+    p.entregadoEn = ahora;
+    p.fechaEntrega = ahora;
 
-      window.repartidorConfirmDelivery = function (pedidoId, repartidorId) { return updateOrderStatus(pedidoId, 'entregado', { repartidorId }); };
-      window.listPedidosPorRepartidor = function (repartidorId) { return _getPedidosGlobales().filter(p => p.repartidorId === repartidorId); };
+    if (p.repartidorId) {
+      // actualizar estado del repartidor a disponible
+      // Asume que tienes función updateRepartidor para esto
+      updateRepartidor(p.repartidorId, { disponible: true });
+    }
+  }
 
+  localStorage.setItem('pedidosGlobales', JSON.stringify(pedidos));
 
-      if (getRepartidores().length === 0) {
-        createRepartidor({ id: 'r_juan', nombre: 'Juan Pérez', telefono: '+573001112223', disponible: true });
-        createRepartidor({ id: 'r_maria', nombre: 'María Gomez', telefono: '+573004445556', disponible: true });
-      }
+  // Si guardas pedidos por usuario también, actualiza localStorage aquí
+  const porUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
+  const cliente = p.cliente || localStorage.getItem('loggedUser') || 'invitado';
+  porUsuario[cliente] = porUsuario[cliente] || [];
+  const idx = porUsuario[cliente].findIndex(x => x.id === p.id);
+  if (idx >= 0) porUsuario[cliente][idx] = p; else porUsuario[cliente].push(p);
+  localStorage.setItem('pedidosPorUsuario', JSON.stringify(porUsuario));
+
+  // Actualiza la interfaz de repartidor si corresponde
+  if (typeof renderPedidosRepartidor === 'function') renderPedidosRepartidor();
+
+  return p;
+};
 
 
       function renderPedidosRepartidor() {
@@ -1721,9 +1525,12 @@
         if (!list) return;
 
         const logged = localStorage.getItem('loggedUser');
-        const users = JSON.parse(localStorage.getItem('users') || '{}');
-        const user = users[logged] || {};
-        const repartidorId = user.repartidorId || logged || '';
+const users = JSON.parse(localStorage.getItem('users') || '{}');
+const user = users[logged];
+const repartidorId = user ? user.repartidorId : null;
+
+console.log('Usuario repartidor logueado:', repartidorId);
+
 
         // Filtrar: pedidos pendientes (para aceptar) + pedidos asignados al repartidor
         const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]')
@@ -1742,15 +1549,19 @@
           // Botones según estado
           if (p.estado === 'pendiente' || p.estado === 'pagado') {
             acciones += `<button class="btn btn-sm btn-success me-1"
-        onclick="repartidorAcceptOrder('${idKey}', '${repartidorId}')">Aceptar</button>`;
+    onclick="repartidorAcceptOrder('${idKey}', '${repartidorId}')">Aceptar</button>`;
+            acciones += `<button class="btn btn-sm btn-danger"
+    onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
           }
+
           if (p.estado === 'aceptado' || p.estado === 'asignado') {
             acciones += `<button class="btn btn-sm btn-warning me-1"
         onclick="updateOrderStatus('${idKey}','en_ruta',{repartidorId:'${repartidorId}'})">En ruta</button>`;
           }
           if (p.estado === 'en_ruta') {
-            acciones += `<button class="btn btn-sm btn-danger"
-        onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
+           acciones += `<button class="btn btn-sm btn-danger"
+  onclick="repartidorConfirmDelivery('${idKey}','${repartidorId}')">Entregado</button>`;
+
           }
 
           const el = document.createElement('div');
@@ -1774,6 +1585,7 @@
       // Refrescar al abrir el modal
       document.getElementById('repartidorModal')
         ?.addEventListener('show.bs.modal', renderPedidosRepartidor);
+        
 
     })();
   </script>
@@ -1926,9 +1738,7 @@
             // Aquí obtienes los datos reales del carrito
             const tiendaSeleccionada = "Pizza Garden"; // puedes cambiar según el contexto
             const cliente = localStorage.getItem("loggedUser"); // correo del usuario logueado
-            // Reemplazar parseInt(...) que lee "$..." por parseFloat limpiando símbolos
-const totalCarritoText = document.getElementById("carritoTotal").textContent || "";
-const totalCarrito = parseFloat(totalCarritoText.replace(/[^0-9.-]+/g, "")) || 0;
+            const totalCarrito = parseInt(document.getElementById("carritoTotal").textContent) || 0;
 
             if (!cliente) {
               alert("Debes iniciar sesión para finalizar la compra.");
@@ -1946,20 +1756,7 @@ const totalCarrito = parseFloat(totalCarritoText.replace(/[^0-9.-]+/g, "")) || 0
 
     });
 
-    // Cantidad de pedidos entregados por repartidor
-    function calcularPedidosPorRepartidor() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const resumen = {};
-      pedidos.forEach(p => {
-        if (p.repartidorId && p.estado === "entregado") {
-          if (!resumen[p.repartidorId]) {
-            resumen[p.repartidorId] = { repartidorId: p.repartidorId, total: 0 };
-          }
-          resumen[p.repartidorId].total += 1;
-        }
-      });
-      return Object.values(resumen);
-    }
+    
 
     // Historial de pedidos por repartidor
     function historialPedidosRepartidor(repartidorId) {
@@ -1987,170 +1784,373 @@ const totalCarrito = parseFloat(totalCarritoText.replace(/[^0-9.-]+/g, "")) || 0
           tiempos[clave].cantidad += 1;
         }
       });
-      return Object.values(tiempos).map(t => ({
-        repartidorId: t.repartidorId,
-        anio: t.anio,
-        mes: t.mes,
-        promedio: (t.suma / t.cantidad).toFixed(1)
-      }));
+     return Object.values(tiempos).map(t => ({
+    repartidorId: t.repartidorId,
+    anio: t.anio,
+    mes: t.mes,
+    entregas: t.cantidad,
+    promedio: (t.suma / t.cantidad).toFixed(1)
+  }));
+}
+// Funciones para reportes de repartidores
+
+// Calcular pedidos entregados por repartidor
+function calcularPedidosPorRepartidor() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const conteo = {};
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado") {
+      if (!conteo[p.repartidorId]) conteo[p.repartidorId] = 0;
+      conteo[p.repartidorId]++;
     }
+  });
+  return Object.entries(conteo).map(([repartidorId, total]) => ({ repartidorId, total }));
+}
 
-    // Mostrar reportes de repartidores
-    function mostrarReporteRepartidores() {
-      const resumen = calcularPedidosPorRepartidor();
-      const tiempos = calcularTiempoPromedioEntrega();
+// Historial de pedidos por repartidor
+function historialPedidosRepartidor(repartidorId) {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  return pedidos.filter(p => p.repartidorId === repartidorId);
+}
 
-      // Tabla de repartidores
-      let htmlRep = `<table class="table table-striped"><thead><tr><th>Repartidor</th><th>Entregas</th></tr></thead><tbody>`;
-      resumen.forEach(r => {
-        htmlRep += `<tr><td>${r.repartidorId}</td><td>${r.total}</td></tr>`;
+// Tiempo promedio de entrega por repartidor (agrupado por mes)
+function calcularTiempoPromedioEntrega() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const tiempos = {};
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado" && p.fechaEntrega) {
+      const inicio = new Date(p.fecha);
+      const fin = new Date(p.fechaEntrega);
+      const minutos = Math.round((fin - inicio) / 60000);
+      const fecha = new Date(p.fecha);
+      const mes = fecha.getMonth() + 1;
+      const anio = fecha.getFullYear();
+      const clave = `${p.repartidorId}-${anio}-${mes}`;
+      if (!tiempos[clave]) {
+        tiempos[clave] = { repartidorId: p.repartidorId, anio, mes, suma: 0, cantidad: 0 };
+      }
+      tiempos[clave].suma += minutos;
+      tiempos[clave].cantidad += 1;
+    }
+  });
+  return Object.values(tiempos).map(t => ({
+    repartidorId: t.repartidorId,
+    anio: t.anio,
+    mes: t.mes,
+    entregas: t.cantidad,
+    promedio: (t.suma / t.cantidad).toFixed(1)
+  }));
+}
+
+// Funciones para reportes de productos y pedidos
+
+// Productos más vendidos por categoría
+function productosMasVendidosPorCategoria() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const categorias = {};
+
+  pedidos.forEach(p => {
+    (p.productos || []).forEach(prod => {
+      const cat = prod.categoria || "sin_categoria";
+      if (!categorias[cat]) categorias[cat] = {};
+      if (!categorias[cat][prod.nombre]) categorias[cat][prod.nombre] = 0;
+      categorias[cat][prod.nombre] += prod.cantidad || 1;
+    });
+  });
+
+  // Convertir a array ordenado por cantidad
+  const resultado = {};
+  for (const cat in categorias) {
+    resultado[cat] = Object.entries(categorias[cat])
+      .sort((a, b) => b[1] - a[1]);
+  }
+  return resultado;
+}
+
+// Resumen de productos en Noviembre 2025 agrupados por tienda
+function resumenNoviembre2025PorTienda() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const resumen = {};
+
+  pedidos.forEach(p => {
+    const fecha = new Date(p.fecha);
+    if (fecha.getMonth() === 10 && fecha.getFullYear() === 2025) { // noviembre = mes 10 (0-indexed)
+      const tienda = p.tienda || "sin_tienda";
+      if (!resumen[tienda]) resumen[tienda] = { productos: {}, total: 0 };
+
+      (p.productos || []).forEach(prod => {
+        if (!resumen[tienda].productos[prod.nombre]) resumen[tienda].productos[prod.nombre] = 0;
+        resumen[tienda].productos[prod.nombre] += prod.cantidad || 1;
       });
-      htmlRep += `</tbody></table>`;
-      const tablaRep = document.getElementById('tablaRepartidores');
-      if (tablaRep) tablaRep.innerHTML = htmlRep;
+      resumen[tienda].total += p.total || 0;
+    }
+  });
 
-      // Historial del repartidor actual
-      const logged = localStorage.getItem('loggedUser');
-      const users = JSON.parse(localStorage.getItem('users') || '{}');
-      const user = users[logged];
-      const repIdActual = user && user.repartidorId;
-      let htmlHist = "";
-      if (repIdActual) {
-        const hist = historialPedidosRepartidor(repIdActual);
-        htmlHist = `<h6>Historial de ${repIdActual}</h6><ul class="list-group">`;
-        hist.forEach(p => {
-          htmlHist += `<li class="list-group-item">${p.fecha || ''} — ${p.cliente || ''} — ${p.estado}</li>`;
+  return resumen;
+}
+
+// Pedidos no entregados en más de 45 minutos
+function pedidosFueraDeTiempo() {
+  const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+  const retrasados = [];
+
+  pedidos.forEach(p => {
+    if (p.estado !== "entregado") return;
+    if (!p.fecha || !p.fechaEntrega) return;
+
+    const inicio = new Date(p.fecha);
+    const fin = new Date(p.fechaEntrega);
+    const minutos = (fin - inicio) / 60000;
+
+    if (minutos > 45) {
+      retrasados.push({
+        tienda: p.tienda || "sin_tienda",
+        repartidor: p.repartidorId || "sin_repartidor",
+        cliente: p.cliente || "invitado",
+        minutos
+      });
+    }
+  });
+
+  return retrasados;
+}
+
+// Función para mostrar reportes de repartidores
+function mostrarReporteRepartidores() {
+   const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
+   console.log('Pedidos en localStorage:', pedidos);
+   
+  // Conteo de entregas por repartidor
+  const entregasPorRepartidor = {};
+  pedidos.forEach(p => {
+    if(p.repartidorId && p.estado === 'entregado'){
+      entregasPorRepartidor[p.repartidorId] = (entregasPorRepartidor[p.repartidorId] || 0) + 1;
+    }
+  });
+
+  // Render tabla repartidores
+  const tablaRepDiv = document.getElementById('tablaRepartidores');
+  if(tablaRepDiv){
+    let html = '<table class="table table-striped"><thead><tr><th>Repartidor</th><th>Entregas</th></tr></thead><tbody>';
+    if(Object.keys(entregasPorRepartidor).length === 0){
+      html += `<tr><td colspan="2">No hay entregas registradas.</td></tr>`;
+    } else {
+      for(const [rep, cant] of Object.entries(entregasPorRepartidor)){
+        html += `<tr><td>${rep}</td><td>${cant}</td></tr>`;
+      }
+    }
+    html += '</tbody></table>';
+    tablaRepDiv.innerHTML = html;
+  }
+
+  // Render historial repartidores
+  const tablaHistDiv = document.getElementById('tablaHistorialRepartidor');
+  if(tablaHistDiv){
+    let html = '<h6>Historial de Pedidos por Repartidor</h6>';
+    const repartidores = Object.keys(entregasPorRepartidor);
+    if(repartidores.length === 0){
+      html += '<p>No hay historial disponible.</p>';
+    } else {
+      repartidores.forEach(rep => {
+        html += `<h6>${rep}</h6><ul class="list-group">`;
+        const pedidosRep = pedidos.filter(p => p.repartidorId === rep);
+        pedidosRep.forEach(p => {
+          html += `<li class="list-group-item">${p.fecha || ''} — Cliente: ${p.cliente || ''} — Estado: ${p.estado || ''}</li>`;
         });
-        htmlHist += `</ul>`;
+        html += '</ul>';
+      });
+    }
+    tablaHistDiv.innerHTML = html;
+  }
+
+  // Calcular y mostrar tiempo promedio entrega por repartidor y por mes
+  const tiempos = {};
+  pedidos.forEach(p => {
+    if (p.repartidorId && p.estado === "entregado" && p.fecha && p.fechaEntrega) {
+      const inicio = new Date(p.fecha);
+      const fin = new Date(p.fechaEntrega);
+      const minutos = Math.round((fin - inicio) / 60000);
+      const fecha = new Date(p.fecha);
+      const mes = fecha.getMonth() + 1;
+      const anio = fecha.getFullYear();
+      const clave = `${p.repartidorId}-${anio}-${mes}`;
+      if (!tiempos[clave]) {
+        tiempos[clave] = { repartidorId: p.repartidorId, anio, mes, suma: 0, cantidad: 0 };
       }
-      const tablaHist = document.getElementById('tablaHistorialRepartidor');
-      if (tablaHist) tablaHist.innerHTML = htmlHist;
+      tiempos[clave].suma += minutos;
+      tiempos[clave].cantidad += 1;
+    }
+  });
 
-      // Tiempo promedio
-      let htmlTime = `<table class="table"><thead><tr><th>Repartidor</th><th>Año</th><th>Mes</th><th>Promedio (min)</th></tr></thead><tbody>`;
-      tiempos.forEach(t => {
-        htmlTime += `<tr><td>${t.repartidorId}</td><td>${t.anio}</td><td>${t.mes}</td><td>${t.promedio}</td></tr>`;
+  const tablaTiempoDiv = document.getElementById('tablaTiempoEntrega');
+  if(tablaTiempoDiv){
+    let html = '<table class="table"><thead><tr><th>Repartidor</th><th>Año</th><th>Mes</th><th>Entregas</th><th>Promedio (min)</th></tr></thead><tbody>';
+    const keys = Object.keys(tiempos);
+    if(keys.length === 0){
+      html += `<tr><td colspan="5">No hay datos de tiempo de entrega.</td></tr>`;
+    } else {
+      keys.forEach(k => {
+        const t = tiempos[k];
+        const promedio = (t.suma / t.cantidad).toFixed(1);
+        html += `<tr><td>${t.repartidorId}</td><td>${t.anio}</td><td>${t.mes}</td><td>${t.cantidad}</td><td>${promedio}</td></tr>`;
       });
-      htmlTime += `</tbody></table>`;
-      const tablaTiempo = document.getElementById('tablaTiempoEntrega');
-      if (tablaTiempo) tablaTiempo.innerHTML = htmlTime;
     }
+    html += '</tbody></table>';
+    tablaTiempoDiv.innerHTML = html;
+  }
+}
 
-    // Listener al modal de reportes de repartidores
-    const reportesModal = document.getElementById('reportesModal');
-    if (reportesModal) {
-      reportesModal.addEventListener('shown.bs.modal', mostrarReporteRepartidores);
+
+// Función para mostrar reportes de productos y pedidos
+function mostrarReporteProductosPedidos() {
+  // 1. Productos más vendidos por categoría
+  const vendidos = productosMasVendidosPorCategoria();
+  let htmlVendidos = "";
+  for (const cat in vendidos) {
+    htmlVendidos += `<h6>${cat}</h6><ul>`;
+    vendidos[cat].forEach(([prod, cant]) => {
+      htmlVendidos += `<li>${prod}: ${cant} unidades</li>`;
+    });
+    htmlVendidos += `</ul>`;
+  }
+  document.getElementById('tablaProductosVendidos').innerHTML = htmlVendidos;
+
+  // 2. Resumen Noviembre 2025 por tienda
+  const resumen = resumenNoviembre2025PorTienda();
+  let htmlResumen = "";
+  for (const tienda in resumen) {
+    htmlResumen += `<h6>${tienda}</h6><ul>`;
+    for (const prod in resumen[tienda].productos) {
+      htmlResumen += `<li>${prod}: ${resumen[tienda].productos[prod]} unidades</li>`;
     }
-    // Productos más vendidos por categoría
-    function productosMasVendidosPorCategoria() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const categorias = {};
+    htmlResumen += `<li><strong>Total $${resumen[tienda].total.toLocaleString()}</strong></li>`;
+    htmlResumen += `</ul>`;
+  }
+  document.getElementById('tablaResumenNoviembre').innerHTML = htmlResumen;
 
-      pedidos.forEach(p => {
-        (p.productos || []).forEach(prod => {
-          const cat = prod.categoria || "sin_categoria";
-          if (!categorias[cat]) categorias[cat] = {};
-          if (!categorias[cat][prod.nombre]) categorias[cat][prod.nombre] = 0;
-          categorias[cat][prod.nombre] += prod.cantidad || 1;
-        });
-      });
+  // 3. Pedidos fuera de tiempo (>45 min)
+  const retrasados = pedidosFueraDeTiempo();
+  let htmlRetrasados = `<table class="table"><thead><tr><th>Tienda</th><th>Repartidor</th><th>Cliente</th><th>Minutos</th></tr></thead><tbody>`;
+  retrasados.forEach(r => {
+    htmlRetrasados += `<tr><td>${r.tienda}</td><td>${r.repartidor}</td><td>${r.cliente}</td><td>${r.minutos.toFixed(1)}</td></tr>`;
+  });
+  htmlRetrasados += `</tbody></table>`;
+  document.getElementById('tablaPedidosFueraTiempo').innerHTML = htmlRetrasados;
+}
 
-      // Convertir a array ordenado por cantidad
-      const resultado = {};
-      for (const cat in categorias) {
-        resultado[cat] = Object.entries(categorias[cat])
-          .sort((a, b) => b[1] - a[1]);
-      }
-      return resultado;
-    }
-
-    // Resumen de productos en septiembre 2025 agrupados por tienda
-    function resumenSeptiembre2025PorTienda() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const resumen = {};
-
-      pedidos.forEach(p => {
-        const fecha = new Date(p.fecha);
-        if (fecha.getMonth() === 10 && fecha.getFullYear() === 2025) { // septiembre = mes 8
-          const tienda = p.tienda || "sin_tienda";
-          if (!resumen[tienda]) resumen[tienda] = { productos: {}, total: 0 };
-
-          (p.productos || []).forEach(prod => {
-            if (!resumen[tienda].productos[prod.nombre]) resumen[tienda].productos[prod.nombre] = 0;
-            resumen[tienda].productos[prod.nombre] += prod.cantidad || 1;
-          });
-          resumen[tienda].total += p.total || 0;
-        }
-      });
-
-      return resumen;
-    }
-
-    // Pedidos no entregados en más de 45 minutos
-    function pedidosFueraDeTiempo() {
-      const pedidos = JSON.parse(localStorage.getItem('pedidosGlobales') || '[]');
-      const retrasados = [];
-
-      pedidos.forEach(p => {
-        if (p.estado !== "entregado") return;
-        if (!p.fecha || !p.fechaEntrega) return;
-
-        const inicio = new Date(p.fecha);
-        const fin = new Date(p.fechaEntrega);
-        const minutos = (fin - inicio) / 60000;
-
-        if (minutos > 45) {
-          retrasados.push({
-            tienda: p.tienda || "sin_tienda",
-            repartidor: p.repartidorId || "sin_repartidor",
-            cliente: p.cliente || "invitado",
-            minutos
-          });
-        }
-      });
-
-      return retrasados;
-    }
-
-    // Renderizar en el modal de reportes
-    function mostrarReporteProductosPedidos() {
-      // 1. Productos más vendidos por categoría
-      const vendidos = productosMasVendidosPorCategoria();
-      let htmlVendidos = "";
-      for (const cat in vendidos) {
-        htmlVendidos += `<h6>${cat}</h6><ul>`;
-        vendidos[cat].forEach(([prod, cant]) => {
-          htmlVendidos += `<li>${prod}: ${cant} unidades</li>`;
-        });
-        htmlVendidos += `</ul>`;
-      }
-      document.getElementById('tablaProductosVendidos').innerHTML = htmlVendidos;
-
-      // 2. Resumen noviembre 2025 por tienda
-      const resumen = resumenNoviembre2025PorTienda();
-      let htmlResumen = "";
-      for (const tienda in resumen) {
-        htmlResumen += `<h6>${tienda}</h6><ul>`;
-        for (const prod in resumen[tienda].productos) {
-          htmlResumen += `<li>${prod}: ${resumen[tienda].productos[prod]} unidades</li>`;
-        }
-        htmlResumen += `<li><strong>Total $${resumen[tienda].total.toLocaleString()}</strong></li>`;
-        htmlResumen += `</ul>`;
-      }
-      document.getElementById('tablaResumenNoviembre').innerHTML = htmlResumen;
-
-      // 3. Pedidos fuera de tiempo (>45 min)
-      const retrasados = pedidosFueraDeTiempo();
-      let htmlRetrasados = `<table class="table"><thead><tr><th>Tienda</th><th>Repartidor</th><th>Cliente</th><th>Minutos</th></tr></thead><tbody>`;
-      retrasados.forEach(r => {
-        htmlRetrasados += `<tr><td>${r.tienda}</td><td>${r.repartidor}</td><td>${r.cliente}</td><td>${r.minutos.toFixed(1)}</td></tr>`;
-      });
-      htmlRetrasados += `</tbody></table>`;
-      document.getElementById('tablaPedidosFueraTiempo').innerHTML = htmlRetrasados;
-    }
-
-
+// Listener al modal de reportes para cargar los reportes
+const reportesModal = document.getElementById('reportesModal');
+if (reportesModal) {
+  reportesModal.addEventListener('shown.bs.modal', function () {
+    mostrarReporteRepartidores();
+    mostrarReporteProductosPedidos();
+  });
+}
   </script>
-</body>
+  <script>
+  // Manejo del botón "Mi Perfil" y cierre de sesión
+  document.addEventListener('DOMContentLoaded', () => {
+    const profileBtn = document.getElementById('profileBtn');
+    const loginModalEl = document.getElementById('loginModal');
+    const profileModalEl = document.getElementById('profileModal');
+    const logoutBtn = document.getElementById('logoutBtn');
 
-</html>
+    function getLoggedUserEmail() {
+      return localStorage.getItem('loggedUser') || null;
+    }
+
+    function getLocalProfile(email) {
+      if (!email) return null;
+      const users = JSON.parse(localStorage.getItem('users') || '{}');
+      return users[email] || null;
+    }
+
+    function renderProfileAddresses(email) {
+      const ul = document.getElementById('profileAddresses');
+      if (!ul) return;
+      ul.innerHTML = '';
+      const profile = getLocalProfile(email);
+      const addresses = (profile && profile.addresses) || [];
+      if (addresses.length === 0) {
+        ul.innerHTML = '<li class="list-group-item">No hay direcciones registradas.</li>';
+        return;
+      }
+      addresses.forEach(addr => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item';
+        li.textContent = addr;
+        ul.appendChild(li);
+      });
+    }
+
+    function populateProfileModal(email) {
+      if (!email) return;
+      const profile = getLocalProfile(email) || { name: email.split('@')[0], addresses: [] };
+      const nameEl = document.getElementById('profileName');
+      const emailEl = document.getElementById('profileEmail');
+      const photoEl = document.getElementById('profilePhoto');
+      if (nameEl) nameEl.textContent = profile.name || email.split('@')[0];
+      if (emailEl) emailEl.textContent = email;
+      if (photoEl) {
+        if (profile.photo) photoEl.src = profile.photo;
+        else photoEl.src = 'https://via.placeholder.com/90x90?text=Foto';
+      }
+      renderProfileAddresses(email);
+    }
+
+    function updateProfileButton() {
+      const logged = getLoggedUserEmail();
+      if (!profileBtn) return;
+      if (logged) {
+        const profile = getLocalProfile(logged) || { name: logged.split('@')[0] };
+        profileBtn.innerHTML = `<i class="bi bi-person"></i> ${profile.name || 'Mi Perfil'}`;
+        profileBtn.classList.remove('text-muted');
+      } else {
+        profileBtn.innerHTML = `<i class="bi bi-person"></i> Mi Perfil`;
+      }
+    }
+
+    // click en "Mi Perfil": abre login si no hay sesión, sino abre perfil
+    profileBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const logged = getLoggedUserEmail();
+      if (!logged) {
+        // abrir modal login
+        const inst = bootstrap.Modal.getOrCreateInstance(loginModalEl);
+        inst.show();
+      } else {
+        // poblar y abrir modal perfil
+        populateProfileModal(logged);
+        const inst = bootstrap.Modal.getOrCreateInstance(profileModalEl);
+        inst.show();
+      }
+    });
+
+    // logout: limpiar datos de sesión y actualizar UI
+    logoutBtn?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const confirmLogout = confirm('¿Deseas cerrar sesión?');
+      if (!confirmLogout) return;
+      localStorage.removeItem('loggedUser');
+      localStorage.removeItem('authToken');
+      // opcional: no borrar perfil local en users, solo la sesión
+      updateProfileButton();
+      // ocultar modal perfil si está abierto
+      try { bootstrap.Modal.getOrCreateInstance(profileModalEl).hide(); } catch (err) { /* ignore */ }
+      // restablecer texto del botón
+      alert('Sesión cerrada.');
+    });
+
+    // cuando el modal de login se cierra, actualizar UI (por si el usuario inició sesión)
+    if (loginModalEl) {
+      loginModalEl.addEventListener('hidden.bs.modal', () => {
+        updateProfileButton();
+      });
+    }
+
+    // inicializar estado del botón al cargar la página
+    updateProfileButton();
+  });
+</script>
+</body>
+  </html>
