@@ -17,23 +17,23 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cambia_esto';
 app.post('/api/register', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { email, password, role = 'cliente', cedula = null } = req.body;
+    const { email, password, role = 'cliente', cedula = null, name = null } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Faltan campos' });
 
     await client.query('BEGIN');
 
+    // comprobar existencia de usuario
     const { rows: exists } = await client.query('SELECT id_usuario FROM usuario WHERE usuario = $1', [email]);
     if (exists.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Usuario ya existe' }); }
 
+    // crear usuario (hash)
     const hash = await bcrypt.hash(password, 10);
-    const { rows } = await client.query(
-      'INSERT INTO usuario (usuario, contrasena) VALUES ($1,$2) RETURNING id_usuario, usuario',
-      [email, hash]
-    );
+    const qUser = 'INSERT INTO usuario (usuario, contrasena) VALUES ($1,$2) RETURNING id_usuario, usuario';
+    const { rows } = await client.query(qUser, [email, hash]);
     const idUsuario = rows[0].id_usuario;
 
-    // asegurar rol existe
-    const { rows: rolRows } = await client.query('SELECT id_rol FROM rol WHERE lower(nombre_rol)=lower($1)', [role]);
+    // asegurar rol existe (busca case-insensitive) o crearlo
+    const { rows: rolRows } = await client.query('SELECT id_rol FROM rol WHERE lower(nombre_rol) = lower($1) LIMIT 1', [role]);
     let idRol;
     if (rolRows.length) idRol = rolRows[0].id_rol;
     else {
@@ -41,21 +41,34 @@ app.post('/api/register', async (req, res) => {
       idRol = r.rows[0].id_rol;
     }
 
-    // asignar rol
-    await client.query('INSERT INTO usuario_rol (id_usuario, id_rol) VALUES ($1,$2)', [idUsuario, idRol]);
+    // asignar rol al usuario (evita duplicados)
+    await client.query('INSERT INTO usuario_rol (id_usuario, id_rol) VALUES ($1,$2) ON CONFLICT DO NOTHING', [idUsuario, idRol]);
 
-    // opcional: vincular cedula
-    if (role.toLowerCase() === 'cliente' && cedula) {
-      await client.query('INSERT INTO cliente_usuario (cedula_cliente, id_usuario) VALUES ($1,$2)', [cedula, idUsuario]);
-    } else if (role.toLowerCase() === 'repartidor' && cedula) {
-      await client.query('INSERT INTO repartidor_usuario (cedula_rep, id_usuario) VALUES ($1,$2)', [cedula, idUsuario]);
+    // opcional: vincular a cliente/repartidor si se envía cédula y existe registro en Cliente/Repartidor
+    if (cedula && role.toLowerCase() === 'cliente') {
+      // insertar sólo si existe la cédula en Cliente
+      await client.query(
+        `INSERT INTO cliente_usuario (cedula_cliente, id_usuario)
+         SELECT $1, $2
+         WHERE EXISTS (SELECT 1 FROM cliente WHERE cedula_cliente = $1)`,
+        [cedula, idUsuario]
+      );
+    } else if (cedula && role.toLowerCase() === 'repartidor') {
+      await client.query(
+        `INSERT INTO repartidor_usuario (cedula_rep, id_usuario)
+         SELECT $1, $2
+         WHERE EXISTS (SELECT 1 FROM repartidor WHERE cedula_rep = $1)`,
+        [cedula, idUsuario]
+      );
     }
 
     await client.query('COMMIT');
-    return res.status(201).json({ ok: true, user: rows[0] });
+
+    // opcional: devolver rol asignado
+    return res.status(201).json({ ok: true, user: { id: idUsuario, usuario: email, role } });
   } catch (err) {
     await client.query('ROLLBACK').catch(()=>{});
-    console.error(err);
+    console.error('Register error:', err);
     return res.status(500).json({ error: err.message });
   } finally {
     client.release();
