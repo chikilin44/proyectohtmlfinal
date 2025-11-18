@@ -699,7 +699,6 @@
   <script>
     // CARRITO
     let carrito = JSON.parse(localStorage.getItem('carrito') || '[]');
-    let tiendaSeleccionada = null; // <-- evita referencia indefinida cuando se usan botones .agregar-carrito
     // mantener referencia global por compatibilidad con partes del código que usan window.carrito
     window.carrito = carrito;
 
@@ -1285,7 +1284,6 @@
           { id: 'h13', nombre: 'Hawaiian Burger', precio: 16900, img: 'images/Ham_Hawaii.png', descripcion: 'Piña asada, jamón y salsa teriyaki.', tienda: 'Oliva Pizza Garden' },
           { id: 'h14', nombre: 'Truffle Burger', precio: 21900, img: 'images/Ham_Trufa.png', descripcion: 'Queso gouda y mayonesa de trufa negra.', tienda: 'La Burger' },
           { id: 'h15', nombre: 'Egg & Cheese Burger', precio: 17900, img: 'images/Ham_Egg.png', descripcion: 'Huevo frito, queso cheddar y tocino.', tienda: 'Smash Burger' },
-          { id: 'h16', nombre: 'Mediterranean Burger', precio:   18900, img: 'images/Ham_Med.png', descripcion: 'Queso feta, aceitunas negras y salsa tzatziki.', tienda: 'Oliva Pizza Garden' },
           { id: 'h17', nombre: 'Smoky Burger', precio: 19900, img: 'images/Ham_Smoke.png', descripcion: 'Sabor ahumado con salsa BBQ artesanal.', tienda: 'Drive Pizza' },
           { id: 'h18', nombre: 'Crispy Onion Burger', precio: 17900, img: 'images/Ham_Onion.png', descripcion: 'Crujientes aros de cebolla y queso americano.', tienda: 'La Burger' },
           { id: 'h19', nombre: 'Buffalo Chicken Burger', precio: 16900, img: 'images/Ham_Buffalo.png', descripcion: 'Pollo en salsa buffalo con aderezo ranch.', tienda: 'ATA Burger' },
@@ -1546,7 +1544,6 @@ console.log('Usuario repartidor logueado:', repartidorId);
           const idKey = p.id || p.paypalOrderId;
           let acciones = '';
 
-          // Botones según estado
           if (p.estado === 'pendiente' || p.estado === 'pagado') {
             acciones += `<button class="btn btn-sm btn-success me-1"
     onclick="repartidorAcceptOrder('${idKey}', '${repartidorId}')">Aceptar</button>`;
@@ -2047,6 +2044,7 @@ if (reportesModal) {
   });
 }
   </script>
+<<<<<<< HEAD
   <script>
   // Manejo del botón "Mi Perfil" y cierre de sesión
   document.addEventListener('DOMContentLoaded', () => {
@@ -2154,3 +2152,9 @@ if (reportesModal) {
 </script>
 </body>
   </html>
+=======
+</body>
+  </html>
+
+
+>>>>>>> 0f69524c354ef1d94a50788ef5fce0e23c187bec
