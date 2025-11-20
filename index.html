@@ -2073,6 +2073,23 @@ if (reportesModal) {
     mostrarReporteProductosPedidos();
   });
 }
+
+// Ejemplo de envío de pedido (para pruebas)
+const pedido = {
+  cedula_cliente: "1234567890",
+  id_tienda: 1,
+  cedula_rep: null,
+  fhrs_pedido: new Date().toISOString(),
+  fhrs_entrega: null,
+  preciototal: 29900,
+  id_estado: 1
+};
+
+fetch('http://localhost:4000/api/pedidos', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(pedido)
+});
   </script>
 <script>
   // Manejo del botón "Mi Perfil" y cierre de sesión
@@ -2181,9 +2198,3 @@ if (reportesModal) {
 </script>
 </body>
   </html>
-=======
-</body>
-  </html>
-
-
->>>>>>> 0f69524c354ef1d94a50788ef5fce0e23c187bec

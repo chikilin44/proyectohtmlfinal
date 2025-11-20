@@ -1,6 +1,6 @@
 import express from 'express';
 import cors from 'cors';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import { pool } from './database/connectionPostgreSQL.js';
@@ -101,26 +101,25 @@ app.post('/api/login', async (req, res) => {
 app.post('/api/pedidos', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { cedula_cliente = null, id_tienda = null, total = 0, productos = [] } = req.body;
-    await client.query('BEGIN');
+    const {
+      cedula_cliente,
+      id_tienda,
+      cedula_rep = null,
+      fhrs_pedido,
+      fhrs_entrega = null,
+      preciototal,
+      id_estado
+    } = req.body;
 
-    const insertPedido = `INSERT INTO pedido (cedula_cliente, id_tienda, preciototal, id_estado)
-      VALUES ($1,$2,$3, (SELECT id_estado FROM estado_pedidos WHERE nom_estado='pendiente' LIMIT 1))
-      RETURNING id_pedido`;
-    const { rows } = await client.query(insertPedido, [cedula_cliente, id_tienda, total]);
-    const idPedido = rows[0].id_pedido;
+    const result = await client.query(
+      `INSERT INTO pedido (cedula_cliente, id_tienda, cedula_rep, fhrs_pedido, fhrs_entrega, preciototal, id_estado)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id_pedido`,
+      [cedula_cliente, id_tienda, cedula_rep, fhrs_pedido, fhrs_entrega, preciototal, id_estado]
+    );
 
-    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4)`;
-    for (const p of productos) {
-      await client.query(insertItem, [idPedido, p.id_producto, p.cantidad || 1, p.precio_uni || 0]);
-    }
-
-    await client.query('COMMIT');
-    return res.status(201).json({ ok: true, id_pedido: idPedido });
+    res.json({ ok: true, id_pedido: result.rows[0].id_pedido });
   } catch (err) {
-    await client.query('ROLLBACK');
-    console.error(err);
-    return res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'No se pudo guardar el pedido', details: err.message });
   } finally {
     client.release();
   }
@@ -130,68 +129,29 @@ app.post('/api/pedidos', async (req, res) => {
 app.post('/api/orders', async (req, res) => {
   const client = await pool.connect();
   try {
-    console.log('/api/orders body:', req.body);
-    const {
-      cliente = null,
-      cedula_cliente = null,
-      id_tienda = null,
-      productos = [],
-      total = 0,
-      fecha = null,
-      direccion = null,
-      metodo = null,
-      paypalOrderId = null
-    } = req.body;
+    const { productos, total, fecha, direccion, metodo, cliente, tienda } = req.body;
+    // Guarda el pedido principal
+    const pedidoRes = await client.query(
+      `INSERT INTO pedido (cliente, fecha, direccion, metodo, total, tienda)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id_pedido`,
+      [cliente, fecha, direccion, metodo, total, tienda]
+    );
+    const idPedido = pedidoRes.rows[0].id_pedido;
 
-    if (!productos || !Array.isArray(productos) || productos.length === 0) {
-      return res.status(400).json({ error: 'Productos vacíos' });
-    }
-
-    await client.query('BEGIN');
-
-    // insertar pedido y guardar el array productos en "datos" (JSONB)
-    const insertPedido = `
-      INSERT INTO pedido (cedula_cliente, id_tienda, fhrs_pedido, preciototal, direccion, metodo, paypal_order_id, datos, id_estado)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,
-        (SELECT id_estado FROM estado_pedidos WHERE nom_estado='pendiente' LIMIT 1)
-      )
-      RETURNING id_pedido
-    `;
-    const fhrs_pedido = fecha ? new Date(fecha) : new Date();
-    const datos = { productos };
-    const r = await client.query(insertPedido, [
-      cedula_cliente || cliente || null,
-      id_tienda || null,
-      fhrs_pedido,
-      total || 0,
-      direccion || null,
-      metodo || null,
-      paypalOrderId || null,
-      datos
-    ]);
-    const idPedido = r.rows[0].id_pedido;
-
-    // insertar items en ped_producto (usar id_producto si existe, si no insertar NULL)
-    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4)`;
-    for (const p of productos) {
-      let id_producto = null;
-      if (p.id_producto) id_producto = p.id_producto;
-      else if (p.nombre) {
-        const found = await client.query('SELECT id_producto FROM producto WHERE lower(nombre) = lower($1) LIMIT 1', [p.nombre]);
-        if (found.rows[0]) id_producto = found.rows[0].id_producto;
-      }
-      const cantidad = Number(p.cantidad) || 1;
-      const precio_uni = (p.precio_uni != null) ? Number(p.precio_uni) : (p.precio != null ? Number(p.precio) : 0);
-      await client.query(insertItem, [idPedido, id_producto, cantidad, precio_uni]);
+    // Guarda los productos del pedido
+    for (const prod of productos) {
+      await client.query(
+        `INSERT INTO pedido_producto (id_pedido, nombre, precio, cantidad, tienda)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [idPedido, prod.nombre, prod.precio, prod.cantidad || 1, prod.tienda || tienda]
+      );
     }
 
     await client.query('COMMIT');
-    console.log('Pedido creado id:', idPedido);
-    return res.status(201).json({ ok: true, idPedido });
+    res.json({ ok: true, idPedido });
   } catch (err) {
-    await client.query('ROLLBACK').catch(()=>{});
-    console.error('Error al guardar pedido:', err);
-    return res.status(500).json({ error: err.message });
+    await client.query('ROLLBACK');
+    res.status(500).json({ error: 'No se pudo guardar el pedido', details: err.message });
   } finally {
     client.release();
   }
