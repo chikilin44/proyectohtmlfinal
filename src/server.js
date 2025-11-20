@@ -17,59 +17,79 @@ const JWT_SECRET = process.env.JWT_SECRET || 'cambia_esto';
 app.post('/api/register', async (req, res) => {
   const client = await pool.connect();
   try {
-    const { email, password, role = 'cliente', cedula = null, name = null } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Faltan campos' });
+    console.log('POST /api/register body:', JSON.stringify(req.body));
+    const {
+      email, password, role = 'cliente', cedula = null,
+      phone1 = null, phone2 = null, firstName = null, lastName = null, name = null
+    } = req.body || {};
+
+    if (!email || !password) {
+      console.warn('Faltan email/password en body:', req.body);
+      return res.status(400).json({ error: 'email y password requeridos' });
+    }
 
     await client.query('BEGIN');
 
-    // comprobar existencia de usuario
-    const { rows: exists } = await client.query('SELECT id_usuario FROM usuario WHERE usuario = $1', [email]);
-    if (exists.length) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Usuario ya existe' }); }
+    const exists = await client.query('SELECT id_usuario FROM usuario WHERE usuario = $1 LIMIT 1', [email]);
+    if (exists.rowCount) { await client.query('ROLLBACK'); return res.status(409).json({ error: 'Usuario ya existe' }); }
 
-    // crear usuario (hash)
     const hash = await bcrypt.hash(password, 10);
-    const qUser = 'INSERT INTO usuario (usuario, contrasena) VALUES ($1,$2) RETURNING id_usuario, usuario';
-    const { rows } = await client.query(qUser, [email, hash]);
-    const idUsuario = rows[0].id_usuario;
+    const u = await client.query(
+      'INSERT INTO usuario (usuario, contrasena, activo) VALUES ($1, $2, TRUE) RETURNING id_usuario',
+      [email, hash]
+    );
+    const idUsuario = u.rows[0].id_usuario;
+    console.log('Usuario creado id:', idUsuario);
 
-    // asegurar rol existe (busca case-insensitive) o crearlo
-    const { rows: rolRows } = await client.query('SELECT id_rol FROM rol WHERE lower(nombre_rol) = lower($1) LIMIT 1', [role]);
+    const r = await client.query('SELECT id_rol FROM rol WHERE lower(nombre_rol)=lower($1) LIMIT 1', [role]);
     let idRol;
-    if (rolRows.length) idRol = rolRows[0].id_rol;
+    if (r.rowCount) idRol = r.rows[0].id_rol;
     else {
-      const r = await client.query('INSERT INTO rol (nombre_rol) VALUES ($1) RETURNING id_rol', [role]);
-      idRol = r.rows[0].id_rol;
+      const rIns = await client.query('INSERT INTO rol (nombre_rol) VALUES ($1) RETURNING id_rol', [role]);
+      idRol = rIns.rows[0].id_rol;
     }
+    await client.query('INSERT INTO usuario_rol (id_usuario, id_rol) VALUES ($1, $2) ON CONFLICT DO NOTHING', [idUsuario, idRol]);
 
-    // asignar rol al usuario (evita duplicados)
-    await client.query('INSERT INTO usuario_rol (id_usuario, id_rol) VALUES ($1,$2) ON CONFLICT DO NOTHING', [idUsuario, idRol]);
+    const nom = (firstName || name || '').trim() || email.split('@')[0];
+    const ape = (lastName || '').trim() || null;
+    const telefono = phone1 || phone2 || null;
+    const roleLower = (role || '').toLowerCase();
 
-    // opcional: vincular a cliente/repartidor si se envía cédula y existe registro en Cliente/Repartidor
-    if (cedula && role.toLowerCase() === 'cliente') {
-      // insertar sólo si existe la cédula en Cliente
+    if (roleLower === 'cliente') {
+      if (!cedula) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ error: 'Cedula requerida para rol cliente' });
+      }
+
+      console.log('Insert/Upsert cliente:', { cedula, nom, ape, telefono });
+
       await client.query(
-        `INSERT INTO cliente_usuario (cedula_cliente, id_usuario)
-         SELECT $1, $2
-         WHERE EXISTS (SELECT 1 FROM cliente WHERE cedula_cliente = $1)`,
-        [cedula, idUsuario]
+        `INSERT INTO cliente (cedula_cliente, nom_cliente, ape_cliente, calle, numero, id_mun)
+         VALUES ($1, $2, $3, NULL, $4, NULL)
+         ON CONFLICT (cedula_cliente) DO UPDATE
+           SET nom_cliente = COALESCE(EXCLUDED.nom_cliente, cliente.nom_cliente),
+               ape_cliente = COALESCE(EXCLUDED.ape_cliente, cliente.ape_cliente),
+               numero = COALESCE(EXCLUDED.numero, cliente.numero)`,
+        [cedula, nom, ape, telefono]
       );
-    } else if (cedula && role.toLowerCase() === 'repartidor') {
-      await client.query(
-        `INSERT INTO repartidor_usuario (cedula_rep, id_usuario)
-         SELECT $1, $2
-         WHERE EXISTS (SELECT 1 FROM repartidor WHERE cedula_rep = $1)`,
-        [cedula, idUsuario]
-      );
+
+      const chk = await client.query('SELECT cedula_cliente, nom_cliente, ape_cliente, numero FROM cliente WHERE cedula_cliente = $1', [cedula]);
+      console.log('cliente row after upsert:', chk.rows[0] || null);
+
+      try {
+        await client.query('INSERT INTO cliente_usuario (cedula_cliente, id_usuario) VALUES ($1, $2) ON CONFLICT DO NOTHING', [cedula, idUsuario]);
+      } catch (relErr) {
+        console.warn('cliente_usuario insert failed (schema?):', relErr.message);
+      }
     }
 
     await client.query('COMMIT');
-
-    // opcional: devolver rol asignado
-    return res.status(201).json({ ok: true, user: { id: idUsuario, usuario: email, role } });
+    return res.status(201).json({ ok: true, idUsuario, role, clienteCedula: roleLower === 'cliente' ? cedula : null });
   } catch (err) {
     await client.query('ROLLBACK').catch(()=>{});
-    console.error('Register error:', err);
-    return res.status(500).json({ error: err.message });
+    console.error('Register handler error:', err && (err.stack || err.message || err));
+    // En desarrollo devolver mensaje para depurar (en producción mostrar genérico)
+    return res.status(500).json({ error: err.message || 'Error interno', detail: (err.stack || '').split('\n').slice(0,5).join('\\n') });
   } finally {
     client.release();
   }
