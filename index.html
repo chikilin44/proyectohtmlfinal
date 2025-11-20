@@ -578,6 +578,27 @@
       });
     }
 
+    // --- Helpers seguros para perfil local (evitan errores si se llaman antes de su definición)
+    if (typeof getLocalProfile !== 'function') {
+      function getLocalProfile(email) {
+        if (!email) return null;
+        try {
+          const users = JSON.parse(localStorage.getItem('users') || '{}');
+          return users[email] || null;
+        } catch (e) { return null; }
+      }
+    }
+    if (typeof saveLocalProfile !== 'function') {
+      function saveLocalProfile(email, profile) {
+        if (!email) return;
+        try {
+          const users = JSON.parse(localStorage.getItem('users') || '{}');
+          users[email] = Object.assign(users[email] || {}, profile || {});
+          localStorage.setItem('users', JSON.stringify(users));
+        } catch (e) { /* ignore */ }
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       const loginForm = document.getElementById('loginForm');
       const toggleRegisterBtn = document.getElementById('toggleRegisterBtn');
@@ -2243,8 +2264,10 @@ fetch('http://localhost:4000/api/pedidos', {
 
     function getLocalProfile(email) {
       if (!email) return null;
-      const users = JSON.parse(localStorage.getItem('users') || '{}');
-      return users[email] || null;
+      try {
+        const users = JSON.parse(localStorage.getItem('users') || '{}');
+        return users[email] || null;
+      } catch (e) { return null; }
     }
 
     function renderProfileAddresses(email) {
