@@ -735,7 +735,9 @@
       btn.addEventListener('click', function () {
         const nombre = this.dataset.nombre;
         const precio = parseInt(this.dataset.precio) || 0;
-        carrito.push({ nombre, precio, tiendaSeleccionada });
+        // obtener tienda desde el botón, o usar variable global si existe, o valor por defecto
+        const tienda = this.dataset.tienda || window.tiendaSeleccionada || "sin_tienda";
+        carrito.push({ nombre, precio, tienda });
         actualizarCarrito();
       });
     });
@@ -848,6 +850,34 @@
                     paypalOrderId: data.orderID,
                     comprador: details.payer || null
                   };
+
+                  // función que envía pedido al backend
+  async function submitOrderToApi(pedido) {
+  try {
+    const token = localStorage.getItem('authToken') || '';
+    // normalizar nombres: metodo en vez de pago/pago -> metodo
+    if (pedido.pago && !pedido.metodo) pedido.metodo = pedido.pago;
+    const res = await fetch(`${API_BASE}/orders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(pedido)
+    });
+    const body = await res.json().catch(()=>null);
+    if (!res.ok) {
+      console.warn('Error guardando pedido en servidor:', res.status, body);
+      return { ok:false, status: res.status, body };
+    }
+    return Object.assign({ ok:true }, body);
+  } catch (err) {
+    console.error('No se pudo conectar al servidor para guardar pedido:', err);
+    return { ok:false, error: err.message };
+  }
+}
+                  submitOrderToApi(Object.assign({}, pedido, { cliente: localStorage.getItem('loggedUser') || 'invitado' }))
+    .then(r => { if (r && r.ok) console.info('Pedido guardado en servidor id:', r.idPedido); });
 
                   let pedidosPorUsuario = JSON.parse(localStorage.getItem('pedidosPorUsuario') || '{}');
                   if (!pedidosPorUsuario[email]) pedidosPorUsuario[email] = [];
@@ -2044,8 +2074,7 @@ if (reportesModal) {
   });
 }
   </script>
-<<<<<<< HEAD
-  <script>
+<script>
   // Manejo del botón "Mi Perfil" y cierre de sesión
   document.addEventListener('DOMContentLoaded', () => {
     const profileBtn = document.getElementById('profileBtn');
