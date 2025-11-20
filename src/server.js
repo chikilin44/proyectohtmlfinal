@@ -3,6 +3,7 @@ import cors from 'cors';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
 import { pool } from './database/connectionPostgreSQL.js';
 
 dotenv.config();
@@ -13,8 +14,29 @@ app.use(express.json());
 
 const JWT_SECRET = process.env.JWT_SECRET || 'cambia_esto';
 
+// Rate limiting configuration
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Demasiadas solicitudes desde esta IP, por favor intenta de nuevo más tarde.',
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Stricter rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5, // Limit each IP to 5 requests per windowMs
+  message: 'Demasiados intentos de autenticación, por favor intenta de nuevo más tarde.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', apiLimiter);
+
 // REGISTER
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   const client = await pool.connect();
   try {
     const { email, password, role = 'cliente', cedula = null, name = null } = req.body;
@@ -76,7 +98,7 @@ app.post('/api/register', async (req, res) => {
 });
 
 // LOGIN
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ error: 'Faltan campos' });
@@ -110,9 +132,10 @@ app.post('/api/pedidos', async (req, res) => {
     const { rows } = await client.query(insertPedido, [cedula_cliente, id_tienda, total]);
     const idPedido = rows[0].id_pedido;
 
-    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4)`;
+    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, nombre_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4,$5)`;
     for (const p of productos) {
-      await client.query(insertItem, [idPedido, p.id_producto, p.cantidad || 1, p.precio_uni || 0]);
+      const nombre = p.nombre || 'Producto';
+      await client.query(insertItem, [idPedido, p.id_producto, nombre, p.cantidad || 1, p.precio_uni || 0]);
     }
 
     await client.query('COMMIT');
@@ -172,17 +195,23 @@ app.post('/api/orders', async (req, res) => {
     const idPedido = r.rows[0].id_pedido;
 
     // insertar items en ped_producto (usar id_producto si existe, si no insertar NULL)
-    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4)`;
+    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, nombre_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4,$5)`;
     for (const p of productos) {
       let id_producto = null;
-      if (p.id_producto) id_producto = p.id_producto;
-      else if (p.nombre) {
+      let nombre_producto = p.nombre || 'Producto';
+      
+      if (p.id_producto) {
+        id_producto = p.id_producto;
+      } else if (p.nombre) {
         const found = await client.query('SELECT id_producto FROM producto WHERE lower(nombre) = lower($1) LIMIT 1', [p.nombre]);
-        if (found.rows[0]) id_producto = found.rows[0].id_producto;
+        if (found.rows && found.rows[0]) {
+          id_producto = found.rows[0].id_producto;
+        }
       }
+      
       const cantidad = Number(p.cantidad) || 1;
       const precio_uni = (p.precio_uni != null) ? Number(p.precio_uni) : (p.precio != null ? Number(p.precio) : 0);
-      await client.query(insertItem, [idPedido, id_producto, cantidad, precio_uni]);
+      await client.query(insertItem, [idPedido, id_producto, nombre_producto, cantidad, precio_uni]);
     }
 
     await client.query('COMMIT');
