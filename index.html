@@ -1555,11 +1555,22 @@
 
       }
 
-      // click en tarjetas de categoría
+      // click en tarjetas de categoría (delegación + accesibilidad)
+      document.addEventListener('click', function (e) {
+        const card = e.target.closest('.categoria-card');
+        if (!card) return;
+        const categoria = card.dataset.categoria;
+        if (categoria) renderProductos(categoria);
+      });
+      // permitir activación con teclado (Enter / Space)
       document.querySelectorAll('.categoria-card').forEach(el => {
-        el.addEventListener('click', function () {
-          const categoria = this.dataset.categoria;
-          renderProductos(categoria);
+        if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const categoria = this.dataset.categoria;
+            if (categoria) renderProductos(categoria);
+          }
         });
       });
 
