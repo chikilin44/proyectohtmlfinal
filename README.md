@@ -13,6 +13,7 @@ Sistema web para gestión de pedidos de comida con integración de base de datos
 - ✅ **Panel de administración** - Reportes y estadísticas
 - ✅ **Catálogo de productos** - Hamburguesas, Pizzas, Bebidas
 - ✅ **Gestión de direcciones** - Múltiples direcciones por usuario
+- ✅ **Seguridad** - Rate limiting para prevenir abuso de API y ataques de fuerza bruta
 
 ## 📋 Requisitos Previos
 
@@ -163,6 +164,32 @@ npx http-server -p 3000
 ```
 
 Luego abre: `http://localhost:3000`
+
+## 🔒 Seguridad
+
+El sistema incluye las siguientes medidas de seguridad:
+
+### Rate Limiting
+- **API General**: 100 solicitudes por IP cada 15 minutos
+- **Autenticación**: 5 intentos por IP cada 15 minutos
+- Protege contra ataques de fuerza bruta y abuso de API
+
+### Autenticación
+- Contraseñas hasheadas con **bcrypt** (10 rounds)
+- Tokens JWT con expiración de 12 horas
+- Validación de credenciales en cada solicitud protegida
+
+### Base de Datos
+- Transacciones para integridad de datos
+- Prepared statements para prevenir SQL injection
+- Validación de entrada en todos los endpoints
+
+### Recomendaciones de Producción
+1. Cambiar `JWT_SECRET` en `.env` a un valor fuerte y aleatorio
+2. Usar HTTPS en producción
+3. Configurar CORS con orígenes específicos
+4. Implementar logging de seguridad
+5. Backup regular de la base de datos
 
 ### 3. Probar el Sistema
 
