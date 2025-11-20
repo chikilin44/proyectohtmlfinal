@@ -104,6 +104,23 @@ function randomBool(prob = 0.25) {
   return Math.random() < prob;
 }
 
+// nueva función: contar ingredientes a partir de la descripción
+function contarIngredientes(descripcion) {
+  if (!descripcion) return null;
+  // normalizar conectores y signos
+  let s = descripcion
+    .replace(/[()]/g, '')
+    .replace(/\s+y\s+|\s+and\s+|&|\+/gi, ',')
+    .replace(/;|\//g, ',');
+  // separar por comas, limpiar y filtrar tokens triviales
+  const stopwords = ['con','de','la','el','los','las','y','en','sin','base','salsa'];
+  const partes = s.split(',')
+    .map(t => t.trim().toLowerCase())
+    .filter(t => t && t.length > 1 && !stopwords.includes(t));
+  // si quedan tokens cortos, intentar contar palabras significativas dentro de cada token
+  return partes.length > 0 ? partes.length : null;
+}
+
 async function generarTamanoAleatorio(tipoBebida) {
   // tamaños comunes en ml
   const tamanos = { agua: [330, 500], gaseosa: [350, 500], jugo: [250, 500], batido: [400, 600], cafe: [150, 250], cerveza: [330, 500] };
@@ -184,13 +201,15 @@ async function insertarProductos() {
             [incluye_acomp, combo, existingId]
           );
         } else if (p.categoria === 'pizzas') {
-          // asegurar categoría_pizza y actualizar pizza.id_catep si está null
+          // asegurar categoría_pizza y actualizar pizza.id_catep y num_ingredientes si faltan
           const id_catep = await ensureCategoriaPizza(client, p.nombre);
+          const numIng = contarIngredientes(p.descripcion);
           await client.query(
             `UPDATE pizza
-             SET id_catep = COALESCE(id_catep, $1)
-             WHERE id_producto = $2`,
-            [id_catep, existingId]
+             SET id_catep = COALESCE(id_catep, $1),
+                 num_ingredientes = COALESCE(num_ingredientes, $2)
+             WHERE id_producto = $3`,
+            [id_catep, numIng, existingId]
           );
         }
 
@@ -211,10 +230,11 @@ async function insertarProductos() {
       if (p.categoria === 'pizzas') {
         // asegurar categoría_pizza y usar id
         const id_catep = await ensureCategoriaPizza(client, p.nombre);
+        const numIng = contarIngredientes(p.descripcion);
         await client.query(
           `INSERT INTO pizza (id_producto, id_catep, tamano, num_ingredientes)
            VALUES ($1, $2, $3, $4)`,
-          [id_producto, id_catep, 'mediana', null]
+          [id_producto, id_catep, 'mediana', numIng]
         );
       } else if (p.categoria === 'hamburguesas') {
         const tipo_carne = p.descripcion && p.descripcion.toLowerCase().includes('pollo') ? 'pollo' : 'res';
