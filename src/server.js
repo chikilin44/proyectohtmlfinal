@@ -55,26 +55,46 @@ app.post('/api/register', async (req, res) => {
     const telefono = phone1 || phone2 || null;
     const roleLower = (role || '').toLowerCase();
 
+    // obtener datos de dirección desde body
+    const {
+      calle = null,
+      departamento = null,
+      municipio = null
+    } = req.body || {};
+
+    // si es cliente: obtener id_dep / id_mun y guardar calle + id_mun
     if (roleLower === 'cliente') {
       if (!cedula) {
         await client.query('ROLLBACK');
         return res.status(400).json({ error: 'Cedula requerida para rol cliente' });
       }
 
-      console.log('Insert/Upsert cliente:', { cedula, nom, ape, telefono });
+      // resolver departamento/municipio (crea si hace falta)
+      let id_dep = null;
+      let id_mun = null;
+      try {
+        id_dep = await ensureDepartamento(client, departamento);
+        id_mun = await ensureMunicipio(client, municipio, id_dep);
+      } catch (locErr) {
+        console.warn('Error resolviendo ubicación:', locErr.message);
+      }
+
+      console.log('Insert/Upsert cliente con dirección:', { cedula, nom, ape, telefono, calle, id_mun, id_dep });
 
       await client.query(
         `INSERT INTO cliente (cedula_cliente, nom_cliente, ape_cliente, calle, numero, id_mun)
-         VALUES ($1, $2, $3, NULL, $4, NULL)
+         VALUES ($1, $2, $3, $4, $5, $6)
          ON CONFLICT (cedula_cliente) DO UPDATE
            SET nom_cliente = COALESCE(EXCLUDED.nom_cliente, cliente.nom_cliente),
                ape_cliente = COALESCE(EXCLUDED.ape_cliente, cliente.ape_cliente),
-               numero = COALESCE(EXCLUDED.numero, cliente.numero)`,
-        [cedula, nom, ape, telefono]
+               calle = COALESCE(EXCLUDED.calle, cliente.calle),
+               numero = COALESCE(EXCLUDED.numero, cliente.numero),
+               id_mun = COALESCE(EXCLUDED.id_mun, cliente.id_mun)`,
+        [cedula, nom, ape, calle, telefono, id_mun]
       );
 
-      const chk = await client.query('SELECT cedula_cliente, nom_cliente, ape_cliente, numero FROM cliente WHERE cedula_cliente = $1', [cedula]);
-      console.log('cliente row after upsert:', chk.rows[0] || null);
+      const chk = await client.query('SELECT cedula_cliente, nom_cliente, ape_cliente, calle, numero, id_mun FROM cliente WHERE cedula_cliente = $1', [cedula]);
+      console.log('cliente row after upsert (direccion):', chk.rows[0] || null);
 
       try {
         await client.query('INSERT INTO cliente_usuario (cedula_cliente, id_usuario) VALUES ($1, $2) ON CONFLICT DO NOTHING', [cedula, idUsuario]);
