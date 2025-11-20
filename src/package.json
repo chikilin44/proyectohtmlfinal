@@ -4,7 +4,8 @@
   "type": "module",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js"
+    "start": "node src/server.js",
+    "setup-db": "node setup_database.js"
   },
   "dependencies": {
     "bcrypt": "^5.1.0",

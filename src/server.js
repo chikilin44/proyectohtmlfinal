@@ -110,9 +110,10 @@ app.post('/api/pedidos', async (req, res) => {
     const { rows } = await client.query(insertPedido, [cedula_cliente, id_tienda, total]);
     const idPedido = rows[0].id_pedido;
 
-    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4)`;
+    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, nombre_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4,$5)`;
     for (const p of productos) {
-      await client.query(insertItem, [idPedido, p.id_producto, p.cantidad || 1, p.precio_uni || 0]);
+      const nombre = p.nombre || 'Producto';
+      await client.query(insertItem, [idPedido, p.id_producto, nombre, p.cantidad || 1, p.precio_uni || 0]);
     }
 
     await client.query('COMMIT');
@@ -172,17 +173,23 @@ app.post('/api/orders', async (req, res) => {
     const idPedido = r.rows[0].id_pedido;
 
     // insertar items en ped_producto (usar id_producto si existe, si no insertar NULL)
-    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4)`;
+    const insertItem = `INSERT INTO ped_producto (id_pedido, id_producto, nombre_producto, cantidad, precio_uni) VALUES ($1,$2,$3,$4,$5)`;
     for (const p of productos) {
       let id_producto = null;
-      if (p.id_producto) id_producto = p.id_producto;
-      else if (p.nombre) {
+      let nombre_producto = p.nombre || 'Producto';
+      
+      if (p.id_producto) {
+        id_producto = p.id_producto;
+      } else if (p.nombre) {
         const found = await client.query('SELECT id_producto FROM producto WHERE lower(nombre) = lower($1) LIMIT 1', [p.nombre]);
-        if (found.rows[0]) id_producto = found.rows[0].id_producto;
+        if (found.rows && found.rows[0]) {
+          id_producto = found.rows[0].id_producto;
+        }
       }
+      
       const cantidad = Number(p.cantidad) || 1;
       const precio_uni = (p.precio_uni != null) ? Number(p.precio_uni) : (p.precio != null ? Number(p.precio) : 0);
-      await client.query(insertItem, [idPedido, id_producto, cantidad, precio_uni]);
+      await client.query(insertItem, [idPedido, id_producto, nombre_producto, cantidad, precio_uni]);
     }
 
     await client.query('COMMIT');
