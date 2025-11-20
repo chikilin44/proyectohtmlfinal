@@ -1,0 +1,32 @@
+{
+  "departamentos": {
+    "Valle del Cauca": ["Cali","Tuluá","Palmira","Jamundí","Buga","Ginebra"],
+    "Cundinamarca": ["Bogotá","Soacha","Chía","Fusagasugá","Zipaquirá"],
+    "Antioquia": ["Medellín","Envigado","Bello","Itagüí","Rionegro","Turbo"],
+    "Atlántico": ["Barranquilla","Soledad","Malambo","Sabanalarga"],
+    "Bolívar": ["Cartagena","Magangué","Turbaná"],
+    "Santander": ["Bucaramanga","Floridablanca","Girón","Piedecuesta"],
+    "Norte de Santander": ["Cúcuta","Ocaña","Pamplona"],
+    "Tolima": ["Ibagué","Espinal","Lérida"],
+    "Huila": ["Neiva","Pitalito","Gigante"],
+    "Risaralda": ["Pereira","Dosquebradas","Marsella"],
+    "Caldas": ["Manizales","La Dorada","Chinchiná"],
+    "Quindío": ["Armenia","Calarcá","Córdoba"],
+    "Magdalena": ["Santa Marta","Ciénaga","Fundación"],
+    "Cesar": ["Valledupar","Aguachica","Chimichagua"],
+    "Córdoba": ["Montería","Sahagún","Lorica"],
+    "Sucre": ["Sincelejo","Corozal"],
+    "Nariño": ["Pasto","Ipiales","Tuquerres"],
+    "Cauca": ["Popayán","Santander de Quilichao","Padilla"],
+    "Boyacá": ["Tunja","Duitama","Sogamoso"],
+    "Meta": ["Villavicencio","Acacías","Guamal"],
+    "Casanare": ["Yopal","Aguazul","Orocué"],
+    "Arauca": ["Arauca","Saravena","Arauquita"],
+    "La Guajira": ["Riohacha","Maicao","Urumita"],
+    "Vichada": ["Puerto Carreño"],
+    "Guaviare": ["San José del Guaviare"],
+    "Putumayo": ["Mocoa","Puerto Asís"],
+    "Amazonas": ["Leticia"],
+    "San Andrés y Providencia": ["San Andrés","Providencia"]
+  }
+}
