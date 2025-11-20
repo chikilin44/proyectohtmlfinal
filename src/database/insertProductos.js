@@ -1,13 +1,139 @@
 import { pool } from './connectionPostgreSQL.js';
 
+// mapa ampliado de sucursales -> id_tienda
 const tiendaMap = {
-  'La Burger': 12,
-  'ATA Burger': 11,
-  'Smash Burger': 13,
-  'Oliva Pizza Garden': 21,
-  'Drive Pizza': 22,
-  'The Pizza Company': 23
+  // Valle del Cauca
+  'La Burger Cali Centro': 100,
+  'La Burger Cali Norte': 101,
+  'La Burger Tuluá': 102,
+  'La Burger Palmira': 103,
+  'La Burger Buga': 104,
+  'Oliva Pizza Garden Cali': 110,
+  'Oliva Pizza Garden Palmira': 111,
+  'Drive Pizza Buga': 120,
+  'Drive Pizza Cali': 121,
+  // Cundinamarca / Bogotá
+  'ATA Burger Bogotá Centro': 200,
+  'ATA Burger Bogotá Norte': 201,
+  'The Pizza Company Bogotá': 210,
+  // Antioquia
+  'Smash Burger Medellín Centro': 300,
+  'Smash Burger Envigado': 301,
+  'La Burger Medellín': 302,
+  'Drive Pizza Rionegro': 310,
+  // Atlántico
+  'Drive Pizza Barranquilla': 400,
+  'Oliva Pizza Barranquilla': 401,
+  // Bolivar
+  'The Pizza Company Cartagena': 500,
+  'Drive Pizza Cartagena Centro': 501,
+  // Santander
+  'La Burger Bucaramanga': 600,
+  'Drive Pizza Bucaramanga': 601,
+  // Otros
+  'ATA Burger Cúcuta': 700,
+  'La Burger Ibagué': 800,
+  'Drive Pizza Pasto': 900,
+  'La Burger Soacha': 1000,
+  'Oliva Pizza Santa Marta': 1100,
+  'Smash Burger Bello': 1200,
+  'Drive Pizza Pereira': 1300,
+  'The Pizza Company Tunja': 1400,
+  'Oliva Pizza Manizales': 1500,
+  'La Burger Villavicencio': 1600,
+  'Drive Pizza Yopal': 1700,
+  'Smash Burger Montería': 1800,
+  'La Burger Sincelejo': 1900
 };
+
+// mapear cada sucursal a un municipio (nombre tal como está en tabla municipio)
+const branchToMunicipio = {
+  'La Burger Cali Centro': 'Cali',
+  'La Burger Cali Norte': 'Cali',
+  'La Burger Tuluá': 'Tuluá',
+  'La Burger Palmira': 'Palmira',
+  'La Burger Buga': 'Buga',
+  'Oliva Pizza Garden Cali': 'Cali',
+  'Oliva Pizza Garden Palmira': 'Palmira',
+  'Drive Pizza Buga': 'Buga',
+  'Drive Pizza Cali': 'Cali',
+  'ATA Burger Bogotá Centro': 'Bogotá',
+  'ATA Burger Bogotá Norte': 'Bogotá',
+  'The Pizza Company Bogotá': 'Bogotá',
+  'Smash Burger Medellín Centro': 'Medellín',
+  'Smash Burger Envigado': 'Envigado',
+  'La Burger Medellín': 'Medellín',
+  'Drive Pizza Rionegro': 'Rionegro',
+  'Drive Pizza Barranquilla': 'Barranquilla',
+  'Oliva Pizza Barranquilla': 'Barranquilla',
+  'The Pizza Company Cartagena': 'Cartagena',
+  'Drive Pizza Cartagena Centro': 'Cartagena',
+  'La Burger Bucaramanga': 'Bucaramanga',
+  'Drive Pizza Bucaramanga': 'Bucaramanga',
+  'ATA Burger Cúcuta': 'Cúcuta',
+  'La Burger Ibagué': 'Ibagué',
+  'Drive Pizza Pasto': 'Pasto',
+  'La Burger Soacha': 'Soacha',
+  'Oliva Pizza Santa Marta': 'Santa Marta',
+  'Smash Burger Bello': 'Bello',
+  'Drive Pizza Pereira': 'Pereira',
+  'The Pizza Company Tunja': 'Tunja',
+  'Oliva Pizza Manizales': 'Manizales',
+  'La Burger Villavicencio': 'Villavicencio',
+  'Drive Pizza Yopal': 'Yopal',
+  'Smash Burger Montería': 'Montería',
+  'La Burger Sincelejo': 'Sincelejo'
+};
+
+// direcciones para cada sucursal (ajusta textos si quieres)
+const tiendaAddresses = {
+  'La Burger Cali Centro': 'Av. 1 #10-20, Cali',
+  'La Burger Cali Norte': 'Calle 50 #20-30, Cali',
+  'La Burger Tuluá': 'Carrera 5 #8-45, Tuluá',
+  'La Burger Palmira': 'Cll 14 #6-22, Palmira',
+  'La Burger Buga': 'Calle 2 #3-15, Buga',
+  'Oliva Pizza Garden Cali': 'Av. 3N #12-34, Cali',
+  'Oliva Pizza Garden Palmira': 'Calle 7 #10-50, Palmira',
+  'Drive Pizza Buga': 'Av. La Plata #5-18, Buga',
+  'Drive Pizza Cali': 'Calle 9 #23-67, Cali',
+  'ATA Burger Bogotá Centro': 'Cra 7 #12-34, Bogotá',
+  'ATA Burger Bogotá Norte': 'Cll 170 #15-20, Bogotá',
+  'The Pizza Company Bogotá': 'Av. Boyacá #80-21, Bogotá',
+  'Smash Burger Medellín Centro': 'Cll 44 #52-21, Medellín',
+  'Smash Burger Envigado': 'Cra 43A #32-50, Envigado',
+  'La Burger Medellín': 'Cll 10 #30-45, Medellín',
+  'Drive Pizza Rionegro': 'Cll 60 #59-10, Rionegro',
+  'Drive Pizza Barranquilla': 'Cll 84 #51-70, Barranquilla',
+  'Oliva Pizza Barranquilla': 'Av. 1 #25-40, Barranquilla',
+  'The Pizza Company Cartagena': 'Cll 30 #7-55, Cartagena',
+  'Drive Pizza Cartagena Centro': 'Calle Real #20-12, Cartagena',
+  'La Burger Bucaramanga': 'Cra 19 #34-12, Bucaramanga',
+  'Drive Pizza Bucaramanga': 'Av. 9 #17-10, Bucaramanga',
+  'ATA Burger Cúcuta': 'Cll 10 #8-60, Cúcuta',
+  'La Burger Ibagué': 'Cll 14 #6-22, Ibagué',
+  'Drive Pizza Pasto': 'Cra 5 #8-40, Pasto',
+  'La Burger Soacha': 'Cll 8 #2-10, Soacha',
+  'Oliva Pizza Santa Marta': 'Av. del Río #6-30, Santa Marta',
+  'Smash Burger Bello': 'Cll 51 #45-20, Bello',
+  'Drive Pizza Pereira': 'Cll 23 #14-50, Pereira',
+  'The Pizza Company Tunja': 'Cra 4 #9-30, Tunja',
+  'Oliva Pizza Manizales': 'Cll 23 #20-10, Manizales',
+  'La Burger Villavicencio': 'Av. 40 #15-12, Villavicencio',
+  'Drive Pizza Yopal': 'Cll 20 #12-5, Yopal',
+  'Smash Burger Montería': 'Cll 30 #7-12, Montería',
+  'La Burger Sincelejo': 'Cra 7 #11-22, Sincelejo'
+};
+
+// helper: resolver tienda por nombre dado en productosCatalogo (mantener función existente)
+function resolveTiendaEntry(tiendaName) {
+  if (!tiendaName) return { id: null, name: tiendaName };
+  if (tiendaMap[tiendaName]) return { id: tiendaMap[tiendaName], name: tiendaName };
+  const key = Object.keys(tiendaMap).find(k => k.toLowerCase().startsWith(tiendaName.toLowerCase()));
+  if (key) return { id: tiendaMap[key], name: key };
+  const partial = Object.keys(tiendaMap).find(k => k.toLowerCase().includes(tiendaName.toLowerCase()));
+  if (partial) return { id: tiendaMap[partial], name: partial };
+  return { id: null, name: tiendaName };
+}
 
 const productosCatalogo = [
   // hamburguesas
@@ -104,39 +230,39 @@ function randomBool(prob = 0.25) {
   return Math.random() < prob;
 }
 
-// nueva función: contar ingredientes a partir de la descripción
+// contar ingredientes desde descripción
 function contarIngredientes(descripcion) {
   if (!descripcion) return null;
-  // normalizar conectores y signos
   let s = descripcion
     .replace(/[()]/g, '')
     .replace(/\s+y\s+|\s+and\s+|&|\+/gi, ',')
     .replace(/;|\//g, ',');
-  // separar por comas, limpiar y filtrar tokens triviales
   const stopwords = ['con','de','la','el','los','las','y','en','sin','base','salsa'];
   const partes = s.split(',')
     .map(t => t.trim().toLowerCase())
     .filter(t => t && t.length > 1 && !stopwords.includes(t));
-  // si quedan tokens cortos, intentar contar palabras significativas dentro de cada token
   return partes.length > 0 ? partes.length : null;
 }
 
-async function generarTamanoAleatorio(tipoBebida) {
-  // tamaños comunes en ml
-  const tamanos = { agua: [330, 500], gaseosa: [350, 500], jugo: [250, 500], batido: [400, 600], cafe: [150, 250], cerveza: [330, 500] };
-  const rango = tamanos[tipoBebida] || [250, 500];
-  const tamanob = Math.floor(Math.random() * (rango[1] - rango[0] + 1)) + rango[0];
-  return `${tamanob}ml`;
+// generar tamaño aleatorio coherente (síncrono)
+function generarTamanoAleatorio(tipoBebida) {
+  const opciones = {
+    gaseosa: ['330ml', '500ml', '600ml'],
+    jugo: ['250ml', '300ml', '500ml'],
+    agua: ['500ml', '600ml', '750ml'],
+    batido: ['350ml', '400ml', '500ml'],
+    cafe: ['200ml', '300ml', '350ml'],
+    cerveza: ['330ml', '355ml'],
+    otro: ['350ml', '500ml']
+  };
+  const lista = opciones[tipoBebida] || opciones['otro'];
+  return lista[Math.floor(Math.random() * lista.length)];
 }
 
-// Nueva función: asegurar categoría de pizza y devolver id_catep
 async function ensureCategoriaPizza(client, nombrePizza) {
-  // normalizar búsqueda por nombre
   const qname = nombrePizza.trim();
-  // buscar existente
   const sel = await client.query('SELECT id_catep FROM categoria_pizza WHERE nombre_pizza ILIKE $1 LIMIT 1', [qname]);
   if (sel.rowCount > 0) return sel.rows[0].id_catep;
-  // insertar nueva categoría (estado_p por defecto true)
   const ins = await client.query(
     `INSERT INTO categoria_pizza (nombre_pizza, estado_p)
      VALUES ($1, TRUE)
@@ -146,20 +272,79 @@ async function ensureCategoriaPizza(client, nombrePizza) {
   return ins.rows[0].id_catep;
 }
 
+async function obtenerOCrearMunicipio(client, nom_mun) {
+  if (!nom_mun) return null;
+  const sel = await client.query('SELECT id_mun FROM municipio WHERE lower(nom_mun) = lower($1) LIMIT 1', [nom_mun.trim()]);
+  if (sel.rowCount > 0) return sel.rows[0].id_mun;
+  const ins = await client.query('INSERT INTO municipio (nom_mun) VALUES ($1) RETURNING id_mun', [nom_mun.trim()]);
+  return ins.rows[0].id_mun;
+}
+
+// Inserta/asegura todas las sucursales definidas en tiendaMap (id_tienda, nombre y id_mun si aplica)
+async function seedTiendas(client) {
+  for (const [nomTienda, idTienda] of Object.entries(tiendaMap)) {
+    const municipioName = branchToMunicipio[nomTienda] || null;
+    const direccion = tiendaAddresses[nomTienda] || null;
+    let id_mun = null;
+    try {
+      if (municipioName) {
+        id_mun = await obtenerOCrearMunicipio(client, municipioName);
+      }
+    } catch (err) {
+      id_mun = null;
+    }
+
+    try {
+      await client.query(
+        `INSERT INTO tienda (id_tienda, nom_tienda, direccion, id_mun)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (id_tienda) DO UPDATE
+           SET nom_tienda = EXCLUDED.nom_tienda,
+               direccion = COALESCE(tienda.direccion, EXCLUDED.direccion),
+               id_mun = COALESCE(tienda.id_mun, EXCLUDED.id_mun)`,
+        [idTienda, nomTienda, direccion, id_mun]
+      );
+    } catch (err) {
+      // Ignorar errores no críticos (esquema distinto, permisos, etc.)
+    }
+  }
+}
+
 async function insertarProductos() {
   const client = await pool.connect();
   let insertCount = 0;
   try {
-    for (const p of productosCatalogo) {
-      const tiendaId = p.tienda ? (tiendaMap[p.tienda] || null) : null;
+    // Asegurar/sembrar todas las tiendas antes de insertar productos
+    await seedTiendas(client);
 
-      // Asegurar tienda (evita FK)
+    for (const p of productosCatalogo) {
+      // resolver tienda / sucursal
+      const tiendaEntry = resolveTiendaEntry(p.tienda);
+      const tiendaId = tiendaEntry.id;
+      const tiendaNombreParaGuardar = tiendaEntry.name || p.tienda || null;
+
+      // intentar obtener id_mun según sucursal (branchToMunicipio)
+      const municipioName = branchToMunicipio[tiendaNombreParaGuardar] || null;
+      let tiendaIdMun = null;
+      if (municipioName) {
+        try {
+          tiendaIdMun = await obtenerOCrearMunicipio(client, municipioName);
+        } catch (e) {
+          // si falla, dejar null
+          tiendaIdMun = null;
+        }
+      }
+
+      // Asegurar tienda en tabla tienda incluyendo id_mun si existe
       if (tiendaId) {
         try {
           await client.query(
-            `INSERT INTO tienda (id_tienda, nombre_tienda) VALUES ($1, $2)
-             ON CONFLICT (id_tienda) DO NOTHING`,
-            [tiendaId, p.tienda]
+            `INSERT INTO tienda (id_tienda, nom_tienda, direccion, id_mun)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (id_tienda) DO UPDATE
+               SET nom_tienda = EXCLUDED.nom_tienda,
+                   id_mun = COALESCE(tienda.id_mun, EXCLUDED.id_mun)`,
+            [tiendaId, tiendaNombreParaGuardar, null, tiendaIdMun]
           );
         } catch (err) {
           // ignorar si columnas/tabla distintas
@@ -175,7 +360,7 @@ async function insertarProductos() {
       if (exist.rowCount > 0) {
         const existingId = exist.rows[0].id_producto;
 
-        // si ya existe, actualizar tablas específicas si faltan datos
+        // actualizar según categoría si faltan datos
         if (p.categoria === 'bebidas') {
           const tipo_bebida = detectTipoBebida(p.nombre);
           const tamanob = detectarTamano(p.nombre) || generarTamanoAleatorio(tipo_bebida);
@@ -201,7 +386,6 @@ async function insertarProductos() {
             [incluye_acomp, combo, existingId]
           );
         } else if (p.categoria === 'pizzas') {
-          // asegurar categoría_pizza y actualizar pizza.id_catep y num_ingredientes si faltan
           const id_catep = await ensureCategoriaPizza(client, p.nombre);
           const numIng = contarIngredientes(p.descripcion);
           await client.query(
@@ -228,7 +412,6 @@ async function insertarProductos() {
       const id_producto = prodRes.rows[0].id_producto;
 
       if (p.categoria === 'pizzas') {
-        // asegurar categoría_pizza y usar id
         const id_catep = await ensureCategoriaPizza(client, p.nombre);
         const numIng = contarIngredientes(p.descripcion);
         await client.query(
@@ -266,7 +449,7 @@ async function insertarProductos() {
 
     console.log(`Inserción finalizada. Productos añadidos: ${insertCount}`);
   } catch (err) {
-    await client.query('ROLLBACK');
+    await client.query('ROLLBACK').catch(()=>{});
     console.error('Error insertando productos:', err.message || err);
   } finally {
     client.release();

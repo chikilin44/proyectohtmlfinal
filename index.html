@@ -140,6 +140,21 @@
                 <label for="registerName" class="form-label">Nombre completo</label>
                 <input type="text" class="form-control" id="registerName">
               </div>
+
+              <div class="mb-3">
+                <label for="registerCedula" class="form-label">Cédula</label>
+                <input type="text" class="form-control" id="registerCedula" placeholder="Ej: 12345678" />
+              </div>
+
+              <div class="mb-3">
+                <label for="registerPhone1" class="form-label">Teléfono principal <span class="text-danger">*</span></label>
+                <input type="tel" class="form-control" id="registerPhone1" placeholder="Ej: +57 300 1234567" />
+              </div>
+
+              <div class="mb-3">
+                <label for="registerPhone2" class="form-label">Teléfono secundario (opcional)</label>
+                <input type="tel" class="form-control" id="registerPhone2" placeholder="Ej: +57 310 7654321" />
+              </div>
             </div>
             <!-- Campo de tipo de usuario -->
             <div class="mb-3">
@@ -569,11 +584,11 @@
         loginMessage.textContent = '';
       });
 
-      async function apiRegister(email, password, role, cedula) {
+      async function apiRegister(email, password, role, cedula, phone1, phone2) {
         return fetch(`${API_BASE}/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, role, cedula })
+          body: JSON.stringify({ email, password, role, cedula, phone1, phone2 })
         });
       }
       async function apiLogin(email, password) {
@@ -590,26 +605,36 @@
         const password = document.getElementById('loginPassword').value;
         const name = document.getElementById('registerName').value.trim();
         const role = document.getElementById('userRole').value;
-        const cedula = document.getElementById('registerCedula')?.value || null;
 
-        if (!email || !password) {
-          loginMessage.textContent = 'Ingresa correo y contraseña.';
-          loginMessage.style.color = 'red';
-          return;
-        }
+        // campos nuevos
+        const cedulaVal = document.getElementById('registerCedula')?.value?.trim() || '';
+        const phone1 = document.getElementById('registerPhone1')?.value?.trim() || '';
+        const phone2 = document.getElementById('registerPhone2')?.value?.trim() || '';
 
-        try {
-          if (isRegister) {
-            if (!name) { loginMessage.textContent = 'Ingresa tu nombre.'; loginMessage.style.color='red'; return; }
-            const res = await apiRegister(email, password, role, cedula);
+        if (isRegister) {
+          if (!name) { loginMessage.textContent = 'Ingresa tu nombre.'; loginMessage.style.color='red'; return; }
+          if (!cedulaVal) { loginMessage.textContent = 'Ingresa tu cédula.'; loginMessage.style.color='red'; return; }
+          if (!phone1) { loginMessage.textContent = 'Ingresa un teléfono principal.'; loginMessage.style.color='red'; return; }
+
+          try {
+            const res = await apiRegister(email, password, role, cedulaVal, phone1, phone2);
             const data = await res.json();
             if (!res.ok) { loginMessage.textContent = data.error || 'Error registro'; loginMessage.style.color='red'; return; }
-            saveLocalProfile(email, { name: name || email.split('@')[0], role, addresses: [] });
+
+            // guardar perfil local con cedula y teléfonos
+            saveLocalProfile(email, { name: name || email.split('@')[0], role, addresses: [], cedula: cedulaVal, phones: [phone1, phone2].filter(Boolean) });
+
             loginMessage.textContent = 'Registro OK. Inicia sesión.'; loginMessage.style.color='green';
             isRegister = false; registerFields.style.display = 'none'; loginBtn.textContent = 'Iniciar sesión'; toggleRegisterBtn.textContent = 'Registrarse';
             return;
+          } catch (err) {
+            console.error(err);
+            loginMessage.textContent = 'Error de conexión al registrar'; loginMessage.style.color='red';
+            return;
           }
+        }
 
+        try {
           // login
           const res = await apiLogin(email, password);
           const data = await res.json();
