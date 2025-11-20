@@ -87,20 +87,26 @@
               <label for="calle" class="form-label">Calle y número</label>
               <input type="text" class="form-control" id="calle" placeholder="Ejemplo: Av. Siempre Viva 742">
             </div>
+
             <div class="mb-3">
-              <label for="ciudad" class="form-label">Ciudad</label>
-              <input type="text" class="form-control" id="ciudad" placeholder="Ejemplo: Cali">
+              <label for="departamento" class="form-label">Departamento</label>
+              <select id="departamento" class="form-select">
+                <option value="">Selecciona departamento</option>
+              </select>
             </div>
+
             <div class="mb-3">
-              <label for="provincia" class="form-label">Departamento</label>
-              <input type="text" class="form-control" id="departamento" placeholder="Ejemplo: Valle del Cauca">
+              <label for="municipio" class="form-label">Municipio</label>
+              <select id="municipio" class="form-select">
+                <option value="">Selecciona municipio</option>
+              </select>
             </div>
+
             <div class="mb-3">
               <label for="codigoPostal" class="form-label">Código Postal</label>
               <input type="text" class="form-control" id="codigoPostal" placeholder="Ejemplo: 1000">
             </div>
 
-            <!-- botones: guardar/actualizar y eliminar (eliminar sólo si ya hay dirección) -->
             <div class="d-flex gap-2">
               <button type="submit" class="btn btn-danger w-100" id="guardarDireccionBtn">Guardar Dirección</button>
               <button type="button" class="btn btn-outline-danger" id="eliminarDireccionBtn"
@@ -1025,56 +1031,100 @@
       const guardarBtn = document.getElementById('guardarDireccionBtn');
       const eliminarBtn = document.getElementById('eliminarDireccionBtn');
 
-      // Actualiza la lista de direcciones en el modal de perfil si está abierto
-      function refreshProfileAddressesUI() {
-        const logged = localStorage.getItem('loggedUser');
-        if (!logged) return;
-        const users = JSON.parse(localStorage.getItem('users') || '{}');
-        const user = users[logged];
-        if (!user) return;
-        const ul = document.getElementById('profileAddresses');
-        if (!ul) return;
-        ul.innerHTML = '';
-        const addresses = user.addresses || [];
-        if (addresses.length === 0) {
-          ul.innerHTML = '<li class="list-group-item">No hay direcciones registradas.</li>';
-        } else {
-          addresses.forEach(addr => {
-            const li = document.createElement('li');
-            li.className = 'list-group-item';
-            li.textContent = addr;
-            ul.appendChild(li);
-          });
-        }
+      // Datos ejemplo: ajusta / amplía según necesites
+      const departamentosData = {
+        "Valle del Cauca": ["Cali", "Tuluá", "Palmira", "Jamundí", "Buga", "Ginebra"],
+        "Cundinamarca": ["Bogotá", "Soacha", "Chía", "Fusagasugá", "Zipaquirá"],
+        "Antioquia": ["Medellín", "Envigado", "Bello", "Itagüí", "Rionegro", "Turbo"],
+        "Atlántico": ["Barranquilla", "Soledad", "Malambo", "Sabanalarga"],
+        "Bolívar": ["Cartagena", "Magangué", "Turbaná"],
+        "Santander": ["Bucaramanga", "Floridablanca", "Girón", "Piedecuesta"],
+        "Norte de Santander": ["Cúcuta", "Ocaña", "Pamplona"],
+        "Tolima": ["Ibagué", "Espinal", "Lérida"],
+        "Huila": ["Neiva", "Pitalito", "Gigante"],
+        "Risaralda": ["Pereira", "Dosquebradas", "Marsella"],
+        "Caldas": ["Manizales", "La Dorada", "Chinchiná"],
+        "Quindío": ["Armenia", "Calarcá", "Córdoba"],
+        "Magdalena": ["Santa Marta", "Ciénaga", "Fundación"],
+        "Cesar": ["Valledupar", "Aguachica", "Chimichagua"],
+        "Córdoba": ["Montería", "Sahagún", "Lorica"],
+        "Sucre": ["Sincelejo", "Corozal", "Montería"],
+        "Nariño": ["Pasto", "Ipiales", "Tuquerres"],
+        "Cauca": ["Popayán", "Santander de Quilichao", "Padilla"],
+        "Boyacá": ["Tunja", "Duitama", "Sogamoso"],
+        "Meta": ["Villavicencio", "Acacías", "Guamal"],
+        "Casanare": ["Yopal", "Aguazul", "Orocué"],
+        "Arauca": ["Arauca", "Saravena", "Arauquita"],
+        "La Guajira": ["Riohacha", "Maicao", "Urumita"],
+        "Vichada": ["Puerto Carreño"],
+        "Guaviare": ["San José del Guaviare"],
+        "Putumayo": ["Mocoa", "Puerto Asís"],
+        "Amazonas": ["Leticia"],
+        "San Andrés y Providencia": ["San Andrés", "Providencia"]
+      };
+      const departamentoSel = document.getElementById('departamento');
+      const municipioSel = document.getElementById('municipio');
+
+      function populateDepartamentos() {
+        if (!departamentoSel) return;
+        departamentoSel.innerHTML = '<option value="">Selecciona departamento</option>';
+        Object.keys(departamentosData).forEach(dep => {
+          const opt = document.createElement('option');
+          opt.value = dep; opt.textContent = dep;
+          departamentoSel.appendChild(opt);
+        });
       }
+
+      function populateMunicipios(depto) {
+        if (!municipioSel) return;
+        municipioSel.innerHTML = '<option value="">Selecciona municipio</option>';
+        const list = departamentosData[depto] || [];
+        list.forEach(m => {
+          const opt = document.createElement('option');
+          opt.value = m; opt.textContent = m;
+          municipioSel.appendChild(opt);
+        });
+      }
+
+      // inicializar selects
+      populateDepartamentos();
+
+      departamentoSel?.addEventListener('change', function () {
+        populateMunicipios(this.value);
+      });
 
       // Rellenar formulario si ya existe dirección guardada
       function prefillDireccion() {
         const obj = JSON.parse(localStorage.getItem('direccionObj') || 'null');
         const texto = localStorage.getItem('direccion') || '';
+
         if (obj) {
           document.getElementById('calle').value = obj.calle || '';
-          document.getElementById('ciudad').value = obj.ciudad || '';
-          document.getElementById('departamento').value = obj.departamento || '';
+          // seleccionar departamento/municipio si existen en los datos
+          if (obj.departamento) {
+            departamentoSel.value = obj.departamento;
+            populateMunicipios(obj.departamento);
+          }
+          if (obj.municipio) {
+            municipioSel.value = obj.municipio;
+          }
           document.getElementById('codigoPostal').value = obj.codigoPostal || '';
           if (guardarBtn) guardarBtn.textContent = 'Actualizar Dirección';
           if (eliminarBtn) eliminarBtn.style.display = 'inline-block';
         } else if (texto) {
           // si sólo hay texto, mostrarlo en calle para edición rápida
           document.getElementById('calle').value = texto;
-          document.getElementById('ciudad').value = '';
-          document.getElementById('departamento').value = '';
+          // no intentar parsear municipio/departamento automáticamente aquí
           document.getElementById('codigoPostal').value = '';
           if (guardarBtn) guardarBtn.textContent = 'Actualizar Dirección';
           if (eliminarBtn) eliminarBtn.style.display = 'inline-block';
         } else {
-          // no hay dirección registrada -> limpiar formulario
           document.getElementById('calle').value = '';
-          document.getElementById('ciudad').value = '';
-          document.getElementById('departamento').value = '';
+          departamentoSel.value = '';
+          municipioSel.innerHTML = '<option value="">Selecciona municipio</option>';
           document.getElementById('codigoPostal').value = '';
           if (guardarBtn) guardarBtn.textContent = 'Guardar Dirección';
-          if (eliminarBtn) eliminarBtn.style.display = 'none';
+          eliminarBtn.style.display = 'none';
         }
       }
 
@@ -1088,17 +1138,17 @@
       direccionForm.addEventListener('submit', function (e) {
         e.preventDefault();
         const calle = document.getElementById('calle').value.trim();
-        const ciudad = document.getElementById('ciudad').value.trim();
+        const municipio = document.getElementById('municipio').value.trim();
         const departamento = document.getElementById('departamento').value.trim();
         const codigoPostal = document.getElementById('codigoPostal').value.trim();
 
-        if (!calle || !ciudad) {
-          alert('Por favor completa calle y ciudad.');
+        if (!calle || !municipio) {
+          alert('Por favor completa calle y municipio.');
           return;
         }
 
-        const direccionTexto = `${calle}, ${ciudad}${departamento ? ', ' + departamento : ''}${codigoPostal ? ' - CP ' + codigoPostal : ''}`;
-        const direccionObj = { calle, ciudad, departamento, codigoPostal };
+        const direccionTexto = `${calle}, ${municipio}${departamento ? ', ' + departamento : ''}${codigoPostal ? ' - CP ' + codigoPostal : ''}`;
+        const direccionObj = { calle, municipio, departamento, codigoPostal };
 
         // Guardar tanto texto como objeto estructurado
         localStorage.setItem('direccion', direccionTexto);
@@ -1110,7 +1160,6 @@
           const users = JSON.parse(localStorage.getItem('users') || '{}');
           if (!users[logged]) users[logged] = {};
           users[logged].addresses = users[logged].addresses || [];
-          // evitar duplicados exactos
           if (!users[logged].addresses.includes(direccionTexto)) {
             users[logged].addresses.push(direccionTexto);
           }
@@ -1123,6 +1172,27 @@
         document.body.classList.remove('modal-open');
 
         // actualizar UI del perfil si corresponde
+        const refreshProfileAddressesUI = () => {
+          const logged = localStorage.getItem('loggedUser');
+          if (!logged) return;
+          const users = JSON.parse(localStorage.getItem('users') || '{}');
+          const user = users[logged];
+          if (!user) return;
+          const ul = document.getElementById('profileAddresses');
+          if (!ul) return;
+          ul.innerHTML = '';
+          const addresses = user.addresses || [];
+          if (addresses.length === 0) {
+            ul.innerHTML = '<li class="list-group-item">No hay direcciones registradas.</li>';
+          } else {
+            addresses.forEach(addr => {
+              const li = document.createElement('li');
+              li.className = 'list-group-item';
+              li.textContent = addr;
+              ul.appendChild(li);
+            });
+          }
+        };
         refreshProfileAddressesUI();
 
         alert('Dirección guardada.');
@@ -1138,7 +1208,6 @@
           localStorage.removeItem('direccion');
           localStorage.removeItem('direccionObj');
 
-          // si hay usuario logueado, eliminar la dirección del perfil (si coincide)
           const logged = localStorage.getItem('loggedUser');
           if (logged) {
             const users = JSON.parse(localStorage.getItem('users') || '{}');
@@ -1148,15 +1217,34 @@
             }
           }
 
-          // limpiar formulario y ocultar botón eliminar
           document.getElementById('calle').value = '';
-          document.getElementById('ciudad').value = '';
-          document.getElementById('departamento').value = '';
+          departamentoSel.value = '';
+          municipioSel.innerHTML = '<option value="">Selecciona municipio</option>';
           document.getElementById('codigoPostal').value = '';
           if (guardarBtn) guardarBtn.textContent = 'Guardar Dirección';
           eliminarBtn.style.display = 'none';
 
-          // actualizar UI del perfil si corresponde
+          const refreshProfileAddressesUI = () => {
+            const logged = localStorage.getItem('loggedUser');
+            if (!logged) return;
+            const users = JSON.parse(localStorage.getItem('users') || '{}');
+            const user = users[logged];
+            if (!user) return;
+            const ul = document.getElementById('profileAddresses');
+            if (!ul) return;
+            ul.innerHTML = '';
+            const addresses = user.addresses || [];
+            if (addresses.length === 0) {
+              ul.innerHTML = '<li class="list-group-item">No hay direcciones registradas.</li>';
+            } else {
+              addresses.forEach(addr => {
+                const li = document.createElement('li');
+                li.className = 'list-group-item';
+                li.textContent = addr;
+                ul.appendChild(li);
+              });
+            }
+          };
           refreshProfileAddressesUI();
 
           alert('Dirección eliminada.');
